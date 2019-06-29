@@ -23,15 +23,16 @@ func createMiddleware(idx int) *Middleware {
 
 	return NewMiddleware(fmt.Sprintf("m%d", idx), f)
 }
-func createMiddlewares(amount int) middlewareList {
-	res := middlewareList{}
+func createMiddlewares(amount int) middlewares {
+	res := middlewares{}
 	for i := 0; i < amount; i++ {
 		m := createMiddleware(i)
 		res = append(res, m)
 	}
 
-	res.arrange()
-	return res
+	result := newMiddlewares(res...)
+
+	return result
 }
 
 func TestProcessPipeSend(t *testing.T) {

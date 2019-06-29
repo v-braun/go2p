@@ -17,22 +17,6 @@ type Adapter interface {
 	Close()
 }
 
-type AdapterProvider interface {
-	OnConnection() <-chan Adapter
-	OnErr() <-chan error
-	Close()
-}
-
-type Dialer interface {
-	AdapterProvider
-	Dial(addr string) <-chan struct{}
-}
-
-type Listener interface {
-	AdapterProvider
-	Listen(addr string)
-}
-
 type PeerStore interface {
 	List() []Peer
 	OnNewPeer(cb func(p Peer))

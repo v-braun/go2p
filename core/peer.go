@@ -122,12 +122,9 @@ func (p *peer) shutdown() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if p.connected {
-		p.connected = false
-		close(p.stop)
-		p.adapter.Close()
-		p.wg.Wait()
-	}
+	close(p.stop)
+	p.adapter.Close()
+	p.wg.Wait()
 }
 
 func (p *peer) readMessage() (Message, error) {

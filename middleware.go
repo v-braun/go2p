@@ -1,4 +1,4 @@
-package core
+package go2p
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ const (
 	Next MiddlewareResult = iota
 )
 
-type MiddlewareFunc func(pipe Pipe, msg Message) (MiddlewareResult, error)
+type MiddlewareFunc func(p *Peer, m *Message) (MiddlewareResult, error)
 
 type Middleware struct {
 	Execute MiddlewareFunc

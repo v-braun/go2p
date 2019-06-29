@@ -18,13 +18,13 @@ type pipe struct {
 
 	store PeerStore
 
-	allActions middlewareList
+	allActions middlewares
 	op         PipeOperation
 
 	ip int // instruction pointer
 }
 
-func newPipe(peer *peer, allActions middlewareList, op PipeOperation, pos int) *pipe {
+func newPipe(peer *peer, allActions middlewares, op PipeOperation, pos int) *pipe {
 	p := new(pipe)
 
 	p.op = op
