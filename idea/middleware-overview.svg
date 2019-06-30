@@ -33,4 +33,14 @@
     <rect x="9.11" y="109.447" width="61.7" height="11.229" style="fill: rgb(216, 117, 186);"/>
     <text style="fill: rgb(255, 255, 255); font-family: Oswald; font-size: 8px; white-space: pre;" x="10.872" y="117.355">incomming message</text>
   </g>
+  <g transform="matrix(1, 0, 0, 1, 6.223988, 7.656736)">
+    <rect x="455.402" y="26.079" width="36.659" height="15.591" style="fill: rgb(78, 216, 193);"/>
+    <text style="fill: rgb(255, 255, 255); font-family: Oswald; font-size: 11px; white-space: pre;" x="457.55" y="37.651">network</text>
+  </g>
+  <path d="M 59.317 51.337 H 70.067 L 70.067 44.071 L 89.445 53.76 L 70.067 63.449 L 70.067 56.182 H 59.317 V 51.337 Z" style="fill: rgb(78, 216, 193);" transform="matrix(0.999795, -0.020224, 0.020224, 0.999795, 366.799957, -10.785022)" bx:shape="arrow 59.317 44.071 30.128 19.378 4.845 19.378 0 1@ebd6e400"/>
+  <g transform="matrix(1, 0, 0, 1, -454.097168, 61.065876)">
+    <rect x="455.402" y="26.079" width="36.659" height="15.591" style="fill: rgb(216, 117, 186);"/>
+    <text style="fill: rgb(255, 255, 255); font-family: Oswald; font-size: 11px; white-space: pre;" x="455.828" y="37.386">app code</text>
+  </g>
+  <path d="M -70.45 -97.136 H -59.7 L -59.7 -104.402 L -40.322 -94.713 L -59.7 -85.024 L -59.7 -92.291 H -70.45 V -97.136 Z" style="fill: rgb(216, 117, 186);" transform="matrix(-1, 0, 0, -1, 0, 0)" bx:shape="arrow -70.45 -104.402 30.128 19.378 4.845 19.378 0 1@2a8fa082"/>
 </svg>
