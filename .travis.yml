@@ -1,0 +1,28 @@
+# template file from:
+# https://gist.github.com/y0ssar1an/df2dab474520c4086926f672c52db139
+
+language: go
+
+# Force-enable Go modules. This will be unnecessary when Go 1.12 lands.
+env:
+  - GO111MODULE=on
+
+# You don't need to test on very old version of the Go compiler. It's the user's
+# responsibility to keep their compilers up to date.
+go:
+  - 1.11.x
+
+# Only clone the most recent commit.
+git:
+  depth: 1
+
+
+# Don't email me the results of the test runs.
+notifications:
+  email: false
+
+script:
+  - go test ./... -v -coverprofile=coverage.txt -covermode=atomic 
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

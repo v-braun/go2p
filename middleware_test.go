@@ -1,4 +1,4 @@
-package core
+package go2p
 
 import (
 	"testing"
