@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/olebedev/emitter"
+	"github.com/v-braun/awaiter"
 )
 
 type PeerStore interface {
@@ -21,8 +21,8 @@ type PeerStore interface {
 type DefaultPeerStore struct {
 	peers    []*Peer
 	mutex    *sync.Mutex
-	emitter  *emitter.Emitter
-	stopper  *StopSignal
+	emitter  *eventEmitter
+	awaiter  awaiter.Awaiter
 	capacity int
 }
 
@@ -30,10 +30,9 @@ func NewDefaultPeerStore(capacity int) PeerStore {
 	ps := new(DefaultPeerStore)
 	ps.peers = make([]*Peer, 0)
 	ps.mutex = new(sync.Mutex)
-	ps.emitter = emitter.New(10)
-	ps.emitter.Use("*", emitter.Void)
+	ps.emitter = newEventEmitter()
 	ps.capacity = capacity
-	ps.stopper = NewStopSignal()
+	ps.awaiter = awaiter.New()
 
 	return ps
 }
@@ -43,18 +42,18 @@ func (ps *DefaultPeerStore) AddPeer(peer *Peer) error {
 	defer ps.mutex.Unlock()
 
 	ps.peers = append(ps.peers, peer)
-	go ps.emitter.Emit("add-peer", peer)
+	ps.emitter.EmitAsync("add-peer", peer)
 	return nil
 }
 
 func (ps *DefaultPeerStore) OnPeerAdd(handler func(peer *Peer)) {
-	ps.emitter.On("add-peer", func(ev *emitter.Event) {
-		handler(ev.Args[0].(*Peer))
+	ps.emitter.On("add-peer", func(args []interface{}) {
+		handler(args[0].(*Peer))
 	})
 }
 func (ps *DefaultPeerStore) OnPeerWantRemove(handler func(peer *Peer)) {
-	ps.emitter.On("remove-peer", func(ev *emitter.Event) {
-		handler(ev.Args[0].(*Peer))
+	ps.emitter.On("remove-peer", func(args []interface{}) {
+		handler(args[0].(*Peer))
 	})
 }
 
@@ -86,28 +85,22 @@ func (ps *DefaultPeerStore) IteratePeer(handler func(peer *Peer)) {
 }
 
 func (ps *DefaultPeerStore) Start() {
-
-	ps.stopper.Add()
-	go func(ps *DefaultPeerStore) {
-		defer ps.stopper.Done()
-
+	ps.awaiter.Go(func() {
 		ticker := time.NewTicker(time.Second * 10)
-
 		for {
 			select {
-			case <-ps.stopper.Stopped():
+			case <-ps.awaiter.CancelRequested():
 				return
 			case <-ticker.C:
 				ps.checkCapa()
 			}
 		}
-
-	}(ps)
+	})
 }
 
 func (ps *DefaultPeerStore) Stop() {
-	ps.stopper.Stop()
-	ps.stopper.Wait()
+	ps.awaiter.Cancel()
+	ps.awaiter.AwaitSync()
 
 }
 
@@ -121,7 +114,7 @@ func (ps *DefaultPeerStore) checkCapa() {
 
 	peer2Rem := ps.peers[0]
 
-	go ps.emitter.Emit("remove-peer", peer2Rem)
+	ps.emitter.EmitAsync("remove-peer", peer2Rem)
 }
 
 func (ps *DefaultPeerStore) LockPeer(addr string, handler func(peer *Peer)) {

@@ -11,12 +11,6 @@ import (
 )
 
 func TestPingPong(t *testing.T) {
-	// p1log1 := CreateLogMiddleware("p1:log1")
-	// p1log2 := CreateLogMiddleware("p1:log2")
-
-	// p2log1 := CreateLogMiddleware("p1:log1")
-	// p2log2 := CreateLogMiddleware("p1:log2")
-
 	clientsWg := new(sync.WaitGroup)
 	clientsWg.Add(2)
 
@@ -78,4 +72,7 @@ func TestPingPong(t *testing.T) {
 
 	clientsWg.Wait()
 	msgWg.Wait()
+
+	conn1.Stop()
+	conn2.Stop()
 }

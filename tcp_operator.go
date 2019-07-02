@@ -4,14 +4,13 @@ import (
 	"context"
 	"net"
 
-	"github.com/olebedev/emitter"
 	"github.com/pkg/errors"
 )
 
 var _ PeerOperator = (*OperatorTCP)(nil)
 
 type OperatorTCP struct {
-	emitter *emitter.Emitter
+	emitter *eventEmitter
 	server  net.Listener
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -22,8 +21,7 @@ type OperatorTCP struct {
 
 func NewTcpOperator(network string, localAddr string) *OperatorTCP {
 	o := new(OperatorTCP)
-	o.emitter = emitter.New(10)
-	o.emitter.Use("*", emitter.Void)
+	o.emitter = newEventEmitter()
 	o.localNetwok = network
 	o.localAddr = localAddr
 	return o
@@ -40,19 +38,19 @@ func (o *OperatorTCP) Dial(network string, addr string) error {
 	}
 
 	adapter := NewAdapter(conn)
-	o.emitter.Emit("new-peer", adapter)
+	o.emitter.EmitAsync("new-peer", adapter)
 	return nil
 }
 
 func (o *OperatorTCP) OnPeer(handler func(p Adapter)) {
-	o.emitter.On("new-peer", func(ev *emitter.Event) {
-		handler(ev.Args[0].(Adapter))
+	o.emitter.On("new-peer", func(args []interface{}) {
+		handler(args[0].(Adapter))
 	})
 }
 
 func (o *OperatorTCP) OnError(handler func(err error)) {
-	o.emitter.On("error", func(ev *emitter.Event) {
-		handler(ev.Args[0].(error))
+	o.emitter.On("error", func(args []interface{}) {
+		handler(args[0].(error))
 	})
 }
 
@@ -84,12 +82,12 @@ func (o *OperatorTCP) listen(ctx context.Context) {
 			conn, err := o.server.Accept()
 			if err == nil && conn != nil {
 				adapter := NewAdapter(conn)
-				o.emitter.Emit("new-peer", adapter)
+				o.emitter.EmitAsync("new-peer", adapter)
 			} else if tmpErr, ok := err.(net.Error); ok && tmpErr.Temporary() {
-				o.emitter.Emit("error", errors.Wrap(err, "temp error during listening"), true)
+				o.emitter.EmitAsync("error", errors.Wrap(err, "temp error during listening"), true)
 				continue
 			} else if err != nil && ctx.Err() == nil {
-				o.emitter.Emit("error", errors.Wrap(err, "fatal error, wil stop listening"))
+				o.emitter.EmitAsync("error", errors.Wrap(err, "fatal error, wil stop listening"))
 				break
 			} else if ctx.Err() != nil {
 				break

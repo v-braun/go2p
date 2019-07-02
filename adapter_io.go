@@ -1,44 +1,36 @@
 package go2p
 
 import (
-	"context"
 	"io"
-	"sync"
 
-	"github.com/olebedev/emitter"
 	"github.com/pkg/errors"
+	"github.com/v-braun/awaiter"
 )
 
 type adapterIO struct {
 	receive chan *Message
 	send    chan *Message
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
+
+	awaiter awaiter.Awaiter
+
 	adapter Adapter
 
-	ctx context.Context
-
-	emitter *emitter.Emitter
+	emitter *eventEmitter
 }
 
 func newAdapterIO(adapter Adapter) *adapterIO {
 	io := new(adapterIO)
 	io.receive = make(chan *Message)
 	io.send = make(chan *Message)
-	io.ctx, io.cancel = context.WithCancel(context.Background())
-	io.wg = sync.WaitGroup{}
+	io.awaiter = awaiter.New()
 	io.adapter = adapter
-	io.emitter = emitter.New(10)
-	io.emitter.Use("*", emitter.Void)
+	io.emitter = newEventEmitter()
 
 	return io
 }
 
 func (io *adapterIO) start() {
-	io.wg.Add(1)
-	go func(io *adapterIO) {
-		defer io.wg.Done()
-
+	io.awaiter.Go(func() {
 		for {
 			m, err := io.adapter.ReadMessage()
 			if err != nil {
@@ -49,16 +41,13 @@ func (io *adapterIO) start() {
 			select {
 			case io.receive <- m:
 				continue
-			case <-io.ctx.Done():
+			case <-io.awaiter.CancelRequested():
 				return
 			}
 		}
-	}(io)
+	})
 
-	io.wg.Add(1)
-	go func(io *adapterIO) {
-		defer io.wg.Done()
-
+	io.awaiter.Go(func() {
 		for {
 			select {
 			case m := <-io.send:
@@ -69,11 +58,11 @@ func (io *adapterIO) start() {
 				}
 
 				continue
-			case <-io.ctx.Done():
+			case <-io.awaiter.CancelRequested():
 				return
 			}
 		}
-	}(io)
+	})
 }
 
 func isDisconnectErr(err error) bool {
@@ -81,18 +70,18 @@ func isDisconnectErr(err error) bool {
 }
 func (io *adapterIO) handleError(err error, src string) {
 	if isDisconnectErr(err) {
-		go io.emitter.Emit("disconnect")
+		io.emitter.EmitAsync("disconnect")
 		return
 	}
 
-	io.emitter.Emit("error", errors.Wrapf(err, "error during %s", src))
+	io.emitter.EmitAsync("error", errors.Wrapf(err, "error during %s", src))
 }
 
 func (io *adapterIO) sendMsg(m *Message) error {
 	select {
 	case io.send <- m:
 		return nil
-	case <-io.ctx.Done():
+	case <-io.awaiter.CancelRequested():
 		return DisconnectedError
 	}
 }
@@ -101,7 +90,7 @@ func (io *adapterIO) receiveMsg() (*Message, error) {
 	select {
 	case m := <-io.receive:
 		return m, nil
-	case <-io.ctx.Done():
+	case <-io.awaiter.CancelRequested():
 		return nil, DisconnectedError
 	}
 }

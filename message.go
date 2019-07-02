@@ -13,41 +13,50 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Message represents a p2p message
 type Message struct {
 	payload  []byte
 	metadata maps.Map
-	localId  string
+	localID  string
 }
 
+// NewMessageFromString creates a new Message from the given string
 func NewMessageFromString(data string) *Message {
 	return NewMessageFromData([]byte(data))
 }
 
+// NewMessageFromData creates a new Message from the given data
 func NewMessageFromData(data []byte) *Message {
 	m := NewMessage()
 	m.payload = data
 	return m
 }
 
+// NewMessage creates a new empty Message
 func NewMessage() *Message {
 	m := new(Message)
 	m.payload = []byte{}
 	m.metadata = hashmap.New()
-	m.localId = uuid.New().String()
+	m.localID = uuid.New().String()
 	return m
 }
 
+// Metadata returns a map of metadata assigned to this message
 func (m *Message) Metadata() maps.Map {
 	return m.metadata
 }
 
+// ReadFromConn read all data from the given conn object into the payload
+// of the message instance
 func (m *Message) ReadFromConn(c net.Conn) error {
 	reader := bufio.NewReader(c)
 	err := m.ReadFromReader(reader)
 	return err
 }
 
-func (self *Message) ReadFromReader(reader *bufio.Reader) error {
+// ReadFromReader read all data from the given reader object into the payload
+// of the message instance
+func (m *Message) ReadFromReader(reader *bufio.Reader) error {
 	if reader == nil {
 		panic("reader cannot be nil")
 	}
@@ -66,23 +75,25 @@ func (self *Message) ReadFromReader(reader *bufio.Reader) error {
 		return err
 	}
 
-	self.payload = payloadBuffer
+	m.payload = payloadBuffer
 
 	return nil
 }
 
+// WriteIntoConn writes the message payload into the given conn instance
 func (m *Message) WriteIntoConn(c net.Conn) error {
 	writer := bufio.NewWriter(c)
 	err := m.WriteIntoWriter(writer)
 	return err
 }
 
-func (self *Message) WriteIntoWriter(writer *bufio.Writer) error {
+// WriteIntoWriter writes the message payload into the given writer instance
+func (m *Message) WriteIntoWriter(writer *bufio.Writer) error {
 	if writer == nil {
 		panic("writer cannot be nil")
 	}
 
-	payload := self.payload
+	payload := m.payload
 
 	size := uint32(len(payload))
 	sizeBuffer := make([]byte, 4)
@@ -99,10 +110,12 @@ func (self *Message) WriteIntoWriter(writer *bufio.Writer) error {
 	return writer.Flush()
 }
 
+// PayloadSetString sets the given string as payload of the message
 func (m *Message) PayloadSetString(value string) {
 	m.payload = []byte(value)
 }
 
+// PayloadGetString returns the payload of the message as a string
 func (m *Message) PayloadGetString() string {
 	if len(m.payload) <= 0 {
 		return ""
@@ -112,10 +125,12 @@ func (m *Message) PayloadGetString() string {
 	return result
 }
 
+// PayloadSet sets the payload with the given value
 func (m *Message) PayloadSet(value []byte) {
 	m.payload = value
 }
 
+// PayloadGet returns the payload data
 func (m *Message) PayloadGet() []byte {
 	return m.payload
 }
@@ -133,7 +148,7 @@ func write(writer *bufio.Writer, buffer []byte, onErrMsg string) error {
 }
 
 func read(reader *bufio.Reader, length int, buffer []byte, onErrMsg string) error {
-	var readed int = 0
+	readed := 0
 	for readed < length {
 		currentReaded, err := reader.Read(buffer[readed:])
 		if err == io.EOF {

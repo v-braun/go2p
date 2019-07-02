@@ -11,20 +11,23 @@ import (
 )
 
 func TestChat(t *testing.T) {
-
-	messages := make([]struct {
+	//fmt.Print("hall")
+	messages := []struct {
 		out string
 		in  string
-	}, 4)
-
-	messages[0].in = "hello"
-	messages[0].out = "hi"
-	messages[1].in = "how are you"
-	messages[1].out = "fine"
-	messages[2].in = "nice to meet you"
-	messages[2].out = "you 2"
-	messages[3].in = "bye"
-	messages[3].out = "see ya"
+	}{{
+		out: "hello",
+		in:  "hi",
+	}, {
+		out: "how are you",
+		in:  "fine",
+	}, {
+		out: "nice to meet you",
+		in:  "you 2",
+	}, {
+		out: "bye",
+		in:  "see ya",
+	}}
 
 	p1, err := freeport.GetFreePort()
 	assert.NoError(t, err)
@@ -75,3 +78,7 @@ func TestChat(t *testing.T) {
 	conn2.Stop()
 
 }
+
+// func TestRoutedChat() {
+
+// }

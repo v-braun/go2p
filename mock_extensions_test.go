@@ -26,16 +26,10 @@ func (a *MockAdapter) SetupReadWithResponse(c *mock.Call, response string) chan 
 	return result
 }
 
-func (a *MockAdapter) SetupReadWithNOP(c *mock.Call) {
-	c.Run(func(arg mock.Arguments) {
-		c.Return(0, nil)
-	})
-}
-
 func (a *MockAdapter) SetupClose(readCall *mock.Call, res error) {
 	a.On("Close").Return().Run(func(arg mock.Arguments) {
 		readCall.Run(func(arg mock.Arguments) {
-			readCall.Return(0, res)
+			readCall.Return(nil, res)
 		})
 	})
 }

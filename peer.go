@@ -1,11 +1,10 @@
 package go2p
 
 import (
-	"sync"
+	"github.com/v-braun/awaiter"
 
 	"github.com/emirpasic/gods/maps"
 	"github.com/emirpasic/gods/maps/hashmap"
-	"github.com/olebedev/emitter"
 	"github.com/pkg/errors"
 )
 
@@ -13,41 +12,34 @@ type Peer struct {
 	io         *adapterIO
 	send       chan *Message
 	middleware middlewares
-	emitter    *emitter.Emitter
+	emitter    *eventEmitter
 	metadata   maps.Map
-	wg         *sync.WaitGroup
+	awaiter    awaiter.Awaiter
 }
 
 func newPeer(adapter Adapter, middleware middlewares) *Peer {
 	p := new(Peer)
 	p.send = make(chan *Message)
 	p.io = newAdapterIO(adapter)
-	p.wg = new(sync.WaitGroup)
+	p.awaiter = awaiter.New()
 	p.middleware = middleware
 	p.metadata = hashmap.New()
-	p.emitter = emitter.New(10)
-	p.emitter.Use("*", emitter.Void)
+	p.emitter = newEventEmitter()
 
 	return p
 }
 
 func (p *Peer) start() {
-	p.io.emitter.On("disconnect", func(ev *emitter.Event) {
-		go p.emitter.Emit("disconnect", p)
+	p.io.emitter.On("disconnect", func(args []interface{}) {
+		p.emitter.EmitAsync("disconnect", p)
 	})
-	p.io.emitter.On("error", func(ev *emitter.Event) {
-		go p.emitter.Emit("error", p, ev.Args[0])
+	p.io.emitter.On("error", func(args []interface{}) {
+		p.emitter.EmitAsync("error", p, args[0])
 	})
 
 	p.io.start()
 
-	p.wg.Add(1)
-	go func(p *Peer) {
-		defer func() {
-			p.io.adapter.Close()
-			p.wg.Done()
-		}()
-
+	p.awaiter.Go(func() {
 		for {
 			select {
 			case m := <-p.io.receive:
@@ -56,11 +48,11 @@ func (p *Peer) start() {
 			case m := <-p.send:
 				p.processPipe(m, Send)
 				continue
-			case <-p.io.ctx.Done():
+			case <-p.awaiter.CancelRequested():
 				return
 			}
 		}
-	}(p)
+	})
 }
 
 func (p *Peer) processPipe(m *Message, op PipeOperation) {
@@ -72,28 +64,34 @@ func (p *Peer) processPipe(m *Message, op PipeOperation) {
 	}
 
 	if err != nil {
-		p.emitter.Emit("error", p, errors.Wrap(err, "error during process pipe"))
-		p.io.cancel()
+		p.emitter.EmitAsync("error", p, errors.Wrap(err, "error during process pipe"))
+		p.stopInternal()
 		return
 	}
 
 	if op == Receive {
-		p.emitter.Emit("message", p, m)
+		p.emitter.EmitAsync("message", p, m)
 	} else {
 		err := p.io.sendMsg(m)
 		if err != nil {
-			p.emitter.Emit("error", p, errors.Wrap(err, "error during process pipe"))
-			p.io.cancel()
+			p.emitter.EmitAsync("error", p, errors.Wrap(err, "error during process pipe"))
+			p.stopInternal()
 			return
 		}
 	}
 
 }
 
+func (p *Peer) stopInternal() {
+	p.io.adapter.Close()
+	p.io.awaiter.Cancel()
+	p.awaiter.Cancel()
+}
+
 func (p *Peer) stop() {
-	p.io.cancel()
-	p.io.wg.Wait()
-	p.wg.Wait()
+	p.stopInternal()
+	p.io.awaiter.AwaitSync()
+	p.awaiter.AwaitSync()
 }
 
 func (p *Peer) Address() string {

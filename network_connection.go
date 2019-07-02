@@ -2,8 +2,6 @@ package go2p
 
 import (
 	"github.com/pkg/errors"
-
-	"github.com/olebedev/emitter"
 )
 
 type NetworkConnectionBuilder struct {
@@ -39,8 +37,7 @@ func (b *NetworkConnectionBuilder) Build() *NetworkConnection {
 	nc := new(NetworkConnection)
 	nc.middlewares = b.middlewares
 	nc.operators = b.operators
-	nc.emitter = emitter.New(50)
-	nc.emitter.Use("*", emitter.Void)
+	nc.emitter = newEventEmitter()
 	nc.peerStore = b.peerStore
 
 	return nc
@@ -63,7 +60,7 @@ func NewNetworkConnectionTCP(localAddr string) *NetworkConnection {
 type NetworkConnection struct {
 	middlewares []*Middleware
 	operators   []PeerOperator
-	emitter     *emitter.Emitter
+	emitter     *eventEmitter
 	peerStore   PeerStore
 }
 
@@ -81,7 +78,7 @@ func (nc *NetworkConnection) ConnectTo(network string, addr string) {
 
 func (nc *NetworkConnection) Start() error {
 	nc.peerStore.OnPeerAdd(func(peer *Peer) {
-		go nc.emitter.Emit("peer-new", peer)
+		nc.emitter.EmitAsync("peer-new", peer)
 	})
 	nc.peerStore.OnPeerWantRemove(func(peer *Peer) {
 		peer.stop()
@@ -93,29 +90,30 @@ func (nc *NetworkConnection) Start() error {
 			p := newPeer(a, newMiddlewares(nc.middlewares...))
 			err := nc.peerStore.AddPeer(p)
 			if err != nil {
-				p.emitter.Emit("error", errors.Wrapf(err, "could not add peer: %s", p.Address()))
+				p.emitter.EmitAsync("error", errors.Wrapf(err, "could not add peer: %s", p.Address()))
 				return
 			}
 
-			p.emitter.On("message", func(ev *emitter.Event) {
-				go nc.emitter.Emit("peer-message", ev.Args[0], ev.Args[1])
+			p.emitter.On("message", func(args []interface{}) {
+				nc.emitter.EmitAsync("peer-message", args...)
 			})
-			p.emitter.On("disconnect", func(ev *emitter.Event) {
-				p := ev.Args[0].(*Peer)
+			p.emitter.On("disconnect", func(args []interface{}) {
+				p := args[0].(*Peer)
 				p.stop()
 				nc.peerStore.RemovePeer(p)
-				nc.emitter.Emit("peer-disconnect", p)
+				nc.emitter.EmitAsync("peer-disconnect", p)
 			})
-			p.emitter.On("error", func(ev *emitter.Event) {
-				p := ev.Args[0].(*Peer)
+			p.emitter.On("error", func(args []interface{}) {
+				p := args[0].(*Peer)
+				err := args[1].(error)
 				p.stop()
 				nc.peerStore.RemovePeer(p)
-				go nc.emitter.Emit("peer-error", ev.Args[0], ev.Args[1])
+				nc.emitter.EmitAsync("peer-error", p, err)
 			})
 
 			p.start()
 
-			go nc.emitter.Emit("new-peer", p)
+			nc.emitter.EmitAsync("new-peer", p)
 		})
 
 		err := op.Start()
@@ -130,26 +128,26 @@ func (nc *NetworkConnection) Start() error {
 }
 
 func (nc *NetworkConnection) OnPeer(handler func(p *Peer)) {
-	nc.emitter.On("new-peer", func(ev *emitter.Event) {
-		handler(ev.Args[0].(*Peer))
+	nc.emitter.On("new-peer", func(args []interface{}) {
+		handler(args[0].(*Peer))
 	})
 }
 
 func (nc *NetworkConnection) OnMessage(handler func(p *Peer, msg *Message)) {
-	nc.emitter.On("peer-message", func(ev *emitter.Event) {
-		handler(ev.Args[0].(*Peer), ev.Args[1].(*Message))
+	nc.emitter.On("peer-message", func(args []interface{}) {
+		handler(args[0].(*Peer), args[1].(*Message))
 	})
 }
 
 func (nc *NetworkConnection) OnPeerError(handler func(p *Peer, err error)) {
-	nc.emitter.On("peer-error", func(ev *emitter.Event) {
-		handler(ev.Args[0].(*Peer), ev.Args[1].(error))
+	nc.emitter.On("peer-error", func(args []interface{}) {
+		handler(args[0].(*Peer), args[1].(error))
 	})
 }
 
 func (nc *NetworkConnection) OnPeerDisconnect(handler func(p *Peer)) {
-	nc.emitter.On("peer-disconnect", func(ev *emitter.Event) {
-		handler(ev.Args[0].(*Peer))
+	nc.emitter.On("peer-disconnect", func(args []interface{}) {
+		handler(args[0].(*Peer))
 	})
 }
 
