@@ -66,7 +66,11 @@ func (io *adapterIO) start() {
 }
 
 func isDisconnectErr(err error) bool {
-	return err == DisconnectedError || err == io.EOF
+	if err == DisconnectedError || err == io.EOF {
+		return true
+	}
+
+	return false
 }
 func (io *adapterIO) handleError(err error, src string) {
 	if isDisconnectErr(err) {

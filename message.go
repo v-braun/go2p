@@ -13,6 +13,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+func handleReadWriteErr(err error, msg string) error {
+	if err == io.EOF {
+		return DisconnectedError
+	}
+
+	if netErr, ok := err.(*net.OpError); ok {
+		if netErr.Err.Error() == "use of closed network connection" {
+			return DisconnectedError
+		}
+	}
+
+	return errors.Wrap(err, msg)
+}
+
 // Message represents a p2p message
 type Message struct {
 	payload  []byte
@@ -137,11 +151,8 @@ func (m *Message) PayloadGet() []byte {
 
 func write(writer *bufio.Writer, buffer []byte, onErrMsg string) error {
 	_, err := writer.Write(buffer)
-	if err == io.EOF {
-		return err
-	}
 	if err != nil {
-		return errors.Wrap(err, onErrMsg)
+		return handleReadWriteErr(err, onErrMsg)
 	}
 
 	return nil
@@ -151,11 +162,8 @@ func read(reader *bufio.Reader, length int, buffer []byte, onErrMsg string) erro
 	readed := 0
 	for readed < length {
 		currentReaded, err := reader.Read(buffer[readed:])
-		if err == io.EOF {
-			return err
-		}
 		if err != nil {
-			return errors.Wrap(err, onErrMsg)
+			return handleReadWriteErr(err, onErrMsg)
 		}
 
 		readed += currentReaded

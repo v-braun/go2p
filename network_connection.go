@@ -43,12 +43,14 @@ func (b *NetworkConnectionBuilder) Build() *NetworkConnection {
 	return nc
 }
 
-func NewNetworkConnectionTCP(localAddr string) *NetworkConnection {
+func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConnection {
 	op := NewTcpOperator("tcp", localAddr)
 	peerStore := NewDefaultPeerStore(10)
+
 	conn := NewNetworkConnection().
 		WithOperator(op).
 		WithPeerStore(peerStore).
+		// WithMiddleware(Routes(routes)).
 		WithMiddleware(Headers()).
 		WithMiddleware(Crypt()).
 		WithMiddleware(Log()).
@@ -159,6 +161,7 @@ func (nc *NetworkConnection) Stop() {
 	nc.peerStore.IteratePeer(func(p *Peer) {
 		nc.peerStore.RemovePeer(p)
 		p.stop()
+
 	})
 
 	nc.peerStore.Stop()

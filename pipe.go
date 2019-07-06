@@ -41,7 +41,7 @@ func (p *Pipe) process(msg *Message) error {
 	nextItems := p.allActions.nextItems(p.op, p.pos)
 
 	for _, m := range nextItems {
-		// fmt.Printf("%s | %s [%v] %s \n", msg.localId, p.peer.Address(), p.Operation(), m.name)
+		//fmt.Printf("%s | %s [%v] %s \n", msg.localID, p.peer.Address(), p.Operation(), m.name)
 		res, err := m.Execute(p.peer, p, msg)
 		if err != nil {
 			return err
