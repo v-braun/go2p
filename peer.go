@@ -5,7 +5,6 @@ import (
 
 	"github.com/emirpasic/gods/maps"
 	"github.com/emirpasic/gods/maps/hashmap"
-	"github.com/pkg/errors"
 )
 
 type Peer struct {
@@ -64,7 +63,7 @@ func (p *Peer) processPipe(m *Message, op PipeOperation) {
 	}
 
 	if err != nil {
-		p.emitter.EmitAsync("error", p, errors.Wrap(err, "error during process pipe"))
+		p.io.handleError(err, "processPipe")
 		p.stopInternal()
 		return
 	}
@@ -74,7 +73,7 @@ func (p *Peer) processPipe(m *Message, op PipeOperation) {
 	} else {
 		err := p.io.sendMsg(m)
 		if err != nil {
-			p.emitter.EmitAsync("error", p, errors.Wrap(err, "error during process pipe"))
+			p.io.handleError(err, "processPipe")
 			p.stopInternal()
 			return
 		}

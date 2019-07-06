@@ -58,6 +58,25 @@ func createTestNetworks(t *testing.T, routing go2p.RoutingTable) (*networkConnWi
 	return &networkConnWithAddress{net: conn1, addr: addr1}, &networkConnWithAddress{net: conn2, addr: addr2}
 }
 
+func startNetworks(t *testing.T, networks ...*go2p.NetworkConnection) bool {
+	for _, n := range networks {
+		err := n.Start()
+		if !assert.NoError(t, err) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func registerPeerErrorHandlers(t *testing.T, networks ...*go2p.NetworkConnection) {
+	for i, n := range networks {
+		n.OnPeerError(func(p *go2p.Peer, err error) {
+			fmt.Printf("conn%d err: %+v", i, errors.Wrap(err, "unexpected peer error"))
+		})
+	}
+}
+
 func TestChat(t *testing.T) {
 	messages := getChatProtocoll()
 	conn1, conn2 := createTestNetworks(t, go2p.EmptyRoutesTable)
@@ -92,31 +111,16 @@ func TestChat(t *testing.T) {
 		conn2.net.Send(go2p.NewMessageFromString(messages[0].out), p.Address())
 	})
 
-	conn1.net.OnPeerError(func(p *go2p.Peer, err error) {
-		fmt.Printf("conn1 err: %+v", errors.Wrap(err, "unexpected peer error"))
-	})
-	conn2.net.OnPeerError(func(p *go2p.Peer, err error) {
-		fmt.Printf("conn2 err: %+v", errors.Wrap(err, "unexpected peer error"))
-	})
-
-	err := conn1.net.Start()
-	if !assert.NoError(t, err) {
-		return
-	}
-
-	err = conn2.net.Start()
-	if !assert.NoError(t, err) {
+	registerPeerErrorHandlers(t, conn1.net, conn2.net)
+	if !startNetworks(t, conn1.net, conn2.net) {
 		return
 	}
 
 	conn1.net.ConnectTo("tcp", conn2.addr)
 
-	fmt.Printf("start waiting ...\n")
 	testDone.Wait()
 
-	fmt.Printf("start closing conn1 ...\n")
 	conn1.net.Stop()
-	fmt.Printf("start closing conn2 ...\n")
 	conn2.net.Stop()
 }
 
@@ -142,7 +146,7 @@ func TestChat(t *testing.T) {
 // 			wgPings.Done()
 // 			if sendPongs > 0 {
 // 				sendPongs -= 1
-// 				conn2.net.Send(go2p.NewMessageRoutedFromString("pong"), "pong")
+// 				conn1.net.Send(go2p.NewMessageRoutedFromString("pong", "pong"), peer.Address())
 // 			}
 // 		},
 // 		"pong": func(peer *go2p.Peer) {
@@ -153,9 +157,23 @@ func TestChat(t *testing.T) {
 // 			wgPongs.Done()
 // 			if sendPings > 0 {
 // 				sendPings -= 1
-// 				conn2.net.Send(go2p.NewMessageRoutedFromString("ping"), "ping")
+// 				conn2.net.Send(go2p.NewMessageRoutedFromString("ping", "ping"), peer.Address())
 // 			}
 // 		},
 // 	})
+
+// 	registerPeerErrorHandlers(t, conn1.net, conn2.net)
+// 	if !startNetworks(t, conn1.net, conn2.net) {
+// 		return
+// 	}
+
+// 	conn1.net.ConnectTo("tcp", conn2.addr)
+// 	conn1.net.Send(go2p.NewMessageRoutedFromString("ping", "ping"), conn2.addr)
+
+// 	wgPings.Wait()
+// 	wgPongs.Wait()
+
+// 	conn1.net.Stop()
+// 	conn2.net.Stop()
 
 // }

@@ -50,7 +50,7 @@ func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConn
 	conn := NewNetworkConnection().
 		WithOperator(op).
 		WithPeerStore(peerStore).
-		// WithMiddleware(Routes(routes)).
+		WithMiddleware(Routes(routes)).
 		WithMiddleware(Headers()).
 		WithMiddleware(Crypt()).
 		WithMiddleware(Log()).
