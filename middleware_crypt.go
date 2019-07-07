@@ -75,7 +75,7 @@ func encrypt(msg *Message, theirKey *rsa_utils.PubKey) error {
 	content := msg.PayloadGet()
 	contentEnc, err := theirKey.Encrypt(content)
 	if err != nil {
-		return errors.Wrapf(err, "could not encrypt message (len: %d, data: %s...)", len(content))
+		return errors.Wrapf(err, "could not encrypt message (len: %d)", len(content))
 	}
 
 	msg.PayloadSet(contentEnc)
@@ -155,9 +155,6 @@ func handshakeHandleResponse(peer *Peer, pipe *Pipe, msg *Message) error {
 	content := msg.PayloadGet()
 
 	result := content[len(prefixHandshake):]
-	// pubKeyData := content[len(prefixHandshake):]
-	// result := make([]byte, len(pubKeyData))
-	// copy(result, pubKeyData)
 
 	key, err := rsa_utils.PubFromBytes(result)
 	if err != nil {
