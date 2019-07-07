@@ -3,12 +3,12 @@
 
 By [v-braun - viktor-braun.de](https://viktor-braun.de).
 
-[![](https://img.shields.io/github/license/v-braun/go2p.svg?style=flat-square)](https://github.com/v-braun/go2p/blob/master/LICENSE)
 [![Build Status](https://img.shields.io/travis/v-braun/go2p.svg?style=flat-square)](https://travis-ci.org/v-braun/go2p)
 [![codecov](https://codecov.io/gh/v-braun/go2p/branch/master/graph/badge.svg)](https://codecov.io/gh/v-braun/go2p)
 [![Go Report Card](https://goreportcard.com/badge/github.com/v-braun/go2p)](https://goreportcard.com/report/github.com/v-braun/go2p)
 [![Documentation](https://godoc.org/github.com/v-braun/go2p?status.svg)](http://godoc.org/github.com/v-braun/go2p)
 ![PR welcome](https://img.shields.io/badge/PR-welcome-green.svg?style=flat-square)
+[![](https://img.shields.io/github/license/v-braun/go2p.svg?style=flat-square)](https://github.com/v-braun/go2p/blob/master/LICENSE)
 
 
 <p align="center">
