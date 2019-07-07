@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
-	"fmt"
 )
 
 type PubKey struct {
@@ -32,13 +31,10 @@ func Generate() (*PrivKey, error) {
 	result.calcBytes()
 	err = result.PubKey.calcBytes()
 
-	fmt.Printf("Generate: %s (%d)\n", PrintableStr(result.PubKey.Bytes, 200), len(result.PubKey.Bytes))
-
 	return result, err
 }
 
 func PrivFromBytes(data []byte) (*PrivKey, error) {
-	fmt.Printf("PrivFromBytes: %s (%d)\n", PrintableStr(data, 10), len(data))
 	k, err := x509.ParsePKCS1PrivateKey(data)
 	if err != nil {
 		return nil, err
@@ -51,7 +47,6 @@ func PrivFromBytes(data []byte) (*PrivKey, error) {
 	return result, nil
 }
 func PubFromBytes(data []byte) (*PubKey, error) {
-	fmt.Printf("PubFromBytes: %s (%d)\n", PrintableStr(data, 200), len(data))
 	pub, err := x509.ParsePKIXPublicKey(data)
 	if err != nil {
 		return nil, err

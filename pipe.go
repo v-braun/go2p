@@ -43,10 +43,6 @@ func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int) *Pip
 func (p *Pipe) process(msg *Message) error {
 	nextItems := p.allActions.nextItems(p.op, p.pos)
 
-	if p.Operation() == Send {
-		fmt.Printf("DBG: send items:%s \n", nextItems.String())
-	}
-
 	fmt.Printf("next items for %v: %s \n", p.Operation(), nextItems.String())
 	for _, m := range nextItems {
 		fmt.Printf("%s | %s [%v] %s (%d) pipePos: %d dara: {%s} (%d) \n", msg.localID, p.peer.Address(), p.Operation(), m.name, m.pos, p.pos, rsa_utils.PrintableStr(msg.PayloadGet(), 10), len(msg.PayloadGet()))

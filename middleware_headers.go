@@ -2,7 +2,6 @@ package go2p
 
 import (
 	"encoding/binary"
-	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -23,7 +22,6 @@ func getSizeBuffer(data []byte) []byte {
 func middlewareHeadersImpl(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
 	annotations, ok := msg.Metadata().(*hashmap.Map)
 	if !ok {
-		fmt.Println("msg metadata is nil")
 		panic("could not cast annotations to *hashmap.Map")
 	}
 
