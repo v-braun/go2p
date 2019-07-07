@@ -115,3 +115,12 @@ func (ml middlewares) ByPos(pos int) *Middleware {
 
 	return nil
 }
+
+func (ml middlewares) String() string {
+	result := ""
+	for _, item := range ml {
+		result += fmt.Sprintf("%s(%d) -> ", item.name, item.pos)
+	}
+
+	return result
+}

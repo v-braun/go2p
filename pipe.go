@@ -2,6 +2,9 @@ package go2p
 
 import (
 	"errors"
+	"fmt"
+
+	"github.com/v-braun/go2p/rsa_utils"
 )
 
 type PipeOperation int
@@ -40,8 +43,13 @@ func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int) *Pip
 func (p *Pipe) process(msg *Message) error {
 	nextItems := p.allActions.nextItems(p.op, p.pos)
 
+	if p.Operation() == Send {
+		fmt.Printf("DBG: send items:%s \n", nextItems.String())
+	}
+
+	fmt.Printf("next items for %v: %s \n", p.Operation(), nextItems.String())
 	for _, m := range nextItems {
-		//fmt.Printf("%s | %s [%v] %s \n", msg.localID, p.peer.Address(), p.Operation(), m.name)
+		fmt.Printf("%s | %s [%v] %s (%d) pipePos: %d dara: {%s} (%d) \n", msg.localID, p.peer.Address(), p.Operation(), m.name, m.pos, p.pos, rsa_utils.PrintableStr(msg.PayloadGet(), 10), len(msg.PayloadGet()))
 		res, err := m.Execute(p.peer, p, msg)
 		if err != nil {
 			return err
@@ -62,6 +70,7 @@ func (p *Pipe) Send(msg *Message) error {
 		return err
 	}
 
+	fmt.Printf("send %s... to %s\n", rsa_utils.PrintableStr(msg.PayloadGet(), 8), p.peer.Address())
 	err := p.peer.io.sendMsg(msg)
 	return err
 }
@@ -73,6 +82,8 @@ func (p *Pipe) Receive() (*Message, error) {
 	} else if err != nil {
 		return nil, err
 	} else {
+		fmt.Printf("received %s... from %s\n", rsa_utils.PrintableStr(msg.PayloadGet(), 8), p.peer.Address())
+
 		subPipe := newPipe(p.peer, p.allActions, Receive, p.pos+1)
 		err = subPipe.process(msg)
 	}

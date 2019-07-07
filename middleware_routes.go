@@ -14,17 +14,18 @@ var EmptyRoutesTable = *new(RoutingTable)
 // You can listen to specific endpoints and send messages to them
 // This is similar to a controller/action pattern in HTTP frameworks
 func Routes(rt RoutingTable) (string, MiddlewareFunc) {
-	if rt == EmptyRoutesTable {
-		return "routes", func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
-			return Next, nil
-		}
-	}
+	return Log()
+	// if rt == EmptyRoutesTable {
+	// 	return "routes", func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+	// 		return Next, nil
+	// 	}
+	// }
 
-	f := func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
-		op, err := middlewareRoutesImpl(rt, peer, pipe, msg)
-		return op, err
-	}
-	return "routes", f
+	// f := func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+	// 	op, err := middlewareRoutesImpl(rt, peer, pipe, msg)
+	// 	return op, err
+	// }
+	// return "routes", f
 }
 
 // NewMessageRoutedFromString creates a new routed message to the handler given by path

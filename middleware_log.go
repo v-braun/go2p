@@ -15,5 +15,6 @@ func middlewareLogImpl(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, 
 
 	txt := fmt.Sprintf("%s %s (%d bytes)", peer.Address(), directions[pipe.Operation()], len(msg.PayloadGet()))
 	fmt.Sprintln(txt)
+
 	return Next, nil
 }

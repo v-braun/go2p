@@ -2,6 +2,7 @@ package go2p
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/v-braun/go2p/rsa_utils"
@@ -73,21 +74,23 @@ func messageHandle(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.PrivKe
 
 func encrypt(msg *Message, theirKey *rsa_utils.PubKey) error {
 	content := msg.PayloadGet()
-	content, err := theirKey.Encrypt(content)
+	fmt.Printf("encrypt msg %s (%d) with key %s (%d)\n", rsa_utils.PrintableStr(content, 10), len(content), rsa_utils.PrintableStr(theirKey.Bytes, 10), len(theirKey.Bytes))
+	contentEnc, err := theirKey.Encrypt(content)
 	if err != nil {
-		return errors.Wrapf(err, "could not encrypt message (len: %d)", len(content))
+		return errors.Wrapf(err, "could not encrypt message (len: %d, data: %s...)", len(content), rsa_utils.PrintableStr(content, 8))
 	}
 
-	msg.PayloadSet(content)
+	msg.PayloadSet(contentEnc)
 
 	return nil
 }
 
 func decrypt(msg *Message, myKey *rsa_utils.PrivKey) error {
 	content := msg.PayloadGet()
+	contentLen := len(content)
 	content, err := myKey.Decrypt(content)
 	if err != nil {
-		return errors.Wrap(err, "could not decrypt message")
+		return errors.Wrapf(err, "could not decrypt (len: %d)", contentLen)
 	}
 
 	msg.PayloadSet(content)
@@ -109,10 +112,17 @@ func isHandshakeMsg(msg *Message) bool {
 
 	prefix := content[:len(prefixHandshake)]
 	equal := bytes.Equal(prefix, prefixHandshake)
+	if equal {
+		fmt.Printf("found handshake msg: {%s}\n", string(prefix))
+	} else {
+		fmt.Printf("not a handshake msg: {%s}\n", string(prefix))
+	}
+
 	return equal
 }
 
 func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.PrivKey) error {
+	fmt.Printf("handshakePassive: %s\n", peer.Address())
 	if err := handshakeHandleResponse(peer, pipe, msg); err != nil {
 		errors.Wrapf(err, "received message from peer without a handshake | peer: %s", peer.Address())
 		return err
@@ -123,6 +133,7 @@ func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.Pri
 }
 
 func handshakeActive(peer *Peer, pipe *Pipe, myKey *rsa_utils.PrivKey) error {
+	fmt.Printf("handshakeActive: %s\n", peer.Address())
 	if err := handshakeSend(pipe, myKey); err != nil {
 		return err
 	}
@@ -158,6 +169,10 @@ func handshakeHandleResponse(peer *Peer, pipe *Pipe, msg *Message) error {
 	// copy(result, pubKeyData)
 
 	key, err := rsa_utils.PubFromBytes(result)
+	if err != nil {
+		return err
+	}
 	peer.Metadata().Put(headerKeyPubKey, key)
+	fmt.Printf("got key (%s) from %s\n", rsa_utils.PrintableStr(key.Bytes, 10), peer.Address())
 	return err
 }

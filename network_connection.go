@@ -35,7 +35,7 @@ func (b *NetworkConnectionBuilder) WithPeerStore(ps PeerStore) *NetworkConnectio
 
 func (b *NetworkConnectionBuilder) Build() *NetworkConnection {
 	nc := new(NetworkConnection)
-	nc.middlewares = b.middlewares
+	nc.middlewares = newMiddlewares(b.middlewares...)
 	nc.operators = b.operators
 	nc.emitter = newEventEmitter()
 	nc.peerStore = b.peerStore
@@ -50,9 +50,13 @@ func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConn
 	conn := NewNetworkConnection().
 		WithOperator(op).
 		WithPeerStore(peerStore).
-		WithMiddleware(Routes(routes)).
-		WithMiddleware(Headers()).
+		WithMiddleware(Log()).
+		// WithMiddleware(Log()).
+		// WithMiddleware(Log()).
+		// WithMiddleware(Headers()).
+		WithMiddleware(Log()).
 		WithMiddleware(Crypt()).
+		WithMiddleware(Log()).
 		WithMiddleware(Log()).
 		Build()
 
@@ -60,7 +64,7 @@ func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConn
 }
 
 type NetworkConnection struct {
-	middlewares []*Middleware
+	middlewares middlewares
 	operators   []PeerOperator
 	emitter     *eventEmitter
 	peerStore   PeerStore
@@ -89,7 +93,7 @@ func (nc *NetworkConnection) Start() error {
 
 	for _, op := range nc.operators {
 		op.OnPeer(func(a Adapter) {
-			p := newPeer(a, newMiddlewares(nc.middlewares...))
+			p := newPeer(a, nc.middlewares)
 			err := nc.peerStore.AddPeer(p)
 			if err != nil {
 				p.emitter.EmitAsync("error", errors.Wrapf(err, "could not add peer: %s", p.Address()))
