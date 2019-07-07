@@ -5,7 +5,7 @@ var annotationKey = "middleware.routes"
 // RoutingTable represents handler registered by a path.
 // A message will be checked for the existence of an annotation with the name "__routes_path"
 // and this value will be used to find a route within the routing table
-type RoutingTable *map[string]func(peer *Peer)
+type RoutingTable *map[string]func(peer *Peer, msg *Message)
 
 // EmptyRoutesTable is a table without any routes
 var EmptyRoutesTable = *new(RoutingTable)
@@ -59,7 +59,7 @@ func middlewareRoutesImpl(rt RoutingTable, peer *Peer, pipe *Pipe, msg *Message)
 		return Next, nil
 	}
 
-	go route(peer)
+	go route(peer, msg)
 
 	return Next, nil
 }

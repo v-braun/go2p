@@ -148,30 +148,32 @@ func TestRouting(t *testing.T) {
 
 	wgPings.Add(sendPings)
 	wgPongs.Add(sendPongs)
-	conn1, conn2 = createTestNetworks(t, &map[string]func(peer *go2p.Peer){
-		"ping": func(peer *go2p.Peer) {
-			fmt.Printf("ping %s -> %s \n", peer.RemoteAddress(), peer.LocalAddress())
+	conn1, conn2 = createTestNetworks(t, &map[string]func(peer *go2p.Peer, msg *go2p.Message){
+		"play": func(peer *go2p.Peer, msg *go2p.Message) {
 			// if peer.Address() != conn2.fullAddr {
 			// 	assert.FailNow(t, "unexpected pong from addr: %s. conn1: %s conn2: %s", peer.Address(), conn1.addr, conn2.addr)
 			// }
 
-			wgPings.Done()
-			if sendPongs > 0 {
-				sendPongs -= 1
-				conn2.net.Send(go2p.NewMessageRoutedFromString("pong", "pong"), peer.RemoteAddress())
-			}
-		},
-		"pong": func(peer *go2p.Peer) {
-			fmt.Printf("pong %s -> %s \n", peer.RemoteAddress(), peer.LocalAddress())
-			// if peer.Address() != conn1.fullAddr {
-			// 	assert.FailNow(t, "unexpected pong from addr: %s. conn1: %s conn2: %s", peer.Address(), conn1.addr, conn2.addr)
-			// }
+			if msg.PayloadGetString() == "ping" {
+				fmt.Printf("ping %s -> %s \n", peer.RemoteAddress(), peer.LocalAddress())
+				wgPings.Done()
+				if sendPongs > 0 {
+					sendPongs -= 1
+					conn2.net.Send(go2p.NewMessageRoutedFromString("play", "pong"), peer.RemoteAddress())
+				}
+			} else if msg.PayloadGetString() == "pong" {
+				fmt.Printf("pong %s -> %s \n", peer.RemoteAddress(), peer.LocalAddress())
+				// if peer.Address() != conn1.fullAddr {
+				// 	assert.FailNow(t, "unexpected pong from addr: %s. conn1: %s conn2: %s", peer.Address(), conn1.addr, conn2.addr)
+				// }
 
-			wgPongs.Done()
-			if sendPings > 0 {
-				sendPings -= 1
-				conn1.net.Send(go2p.NewMessageRoutedFromString("ping", "ping"), peer.RemoteAddress())
+				wgPongs.Done()
+				if sendPings > 0 {
+					sendPings -= 1
+					conn1.net.Send(go2p.NewMessageRoutedFromString("ping", "ping"), peer.RemoteAddress())
+				}
 			}
+
 		},
 	})
 
@@ -212,9 +214,9 @@ func TestLargeMessages(t *testing.T) {
 	largeMsg := genLargeMessage(256)
 	testDone := sync.WaitGroup{}
 	testDone.Add(1)
-	conn1, conn2 = createTestNetworks(t, &map[string]func(peer *go2p.Peer){
-		"say": func(peer *go2p.Peer) {
-			assert.Equal(t, largeMsg, "")
+	conn1, conn2 = createTestNetworks(t, &map[string]func(peer *go2p.Peer, msg *go2p.Message){
+		"say": func(peer *go2p.Peer, msg *go2p.Message) {
+			assert.Equal(t, largeMsg, msg.PayloadGetString())
 			testDone.Done()
 		},
 	})
