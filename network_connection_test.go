@@ -170,7 +170,7 @@ func TestRouting(t *testing.T) {
 				wgPongs.Done()
 				if sendPings > 0 {
 					sendPings -= 1
-					conn1.net.Send(go2p.NewMessageRoutedFromString("ping", "ping"), peer.RemoteAddress())
+					conn1.net.Send(go2p.NewMessageRoutedFromString("play", "ping"), peer.RemoteAddress())
 				}
 			}
 
@@ -194,11 +194,9 @@ func TestRouting(t *testing.T) {
 		return
 	}
 
-	fmt.Printf("connect to %s\n", conn2.addr)
 	conn1.net.ConnectTo("tcp", conn2.addr)
 	peerConnectedWg.Wait()
-	fmt.Printf("send to %s\n", conn2.addr)
-	conn1.net.Send(go2p.NewMessageRoutedFromString("ping", "ping"), conn2.fullAddr)
+	conn1.net.Send(go2p.NewMessageRoutedFromString("play", "ping"), conn2.fullAddr)
 
 	wgPings.Wait()
 	wgPongs.Wait()
