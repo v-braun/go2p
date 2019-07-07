@@ -1,6 +1,8 @@
 package go2p
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 )
 
@@ -50,13 +52,9 @@ func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConn
 	conn := NewNetworkConnection().
 		WithOperator(op).
 		WithPeerStore(peerStore).
-		WithMiddleware(Log()).
-		// WithMiddleware(Log()).
-		// WithMiddleware(Log()).
-		// WithMiddleware(Headers()).
-		WithMiddleware(Log()).
+		WithMiddleware(Routes(routes)).
+		WithMiddleware(Headers()).
 		WithMiddleware(Crypt()).
-		WithMiddleware(Log()).
 		WithMiddleware(Log()).
 		Build()
 
@@ -72,6 +70,7 @@ type NetworkConnection struct {
 
 func (nc *NetworkConnection) Send(msg *Message, addr string) {
 	nc.peerStore.LockPeer(addr, func(peer *Peer) {
+		fmt.Printf("sending message: %s to peer %s\n", msg.PayloadGetString(), peer.RemoteAddress())
 		peer.send <- msg
 	})
 }
@@ -96,7 +95,7 @@ func (nc *NetworkConnection) Start() error {
 			p := newPeer(a, nc.middlewares)
 			err := nc.peerStore.AddPeer(p)
 			if err != nil {
-				p.emitter.EmitAsync("error", errors.Wrapf(err, "could not add peer: %s", p.Address()))
+				p.emitter.EmitAsync("error", errors.Wrapf(err, "could not add peer: %s", p.RemoteAddress()))
 				return
 			}
 
@@ -117,7 +116,7 @@ func (nc *NetworkConnection) Start() error {
 				nc.emitter.EmitAsync("peer-error", p, err)
 			})
 
-			p.start()
+			<-p.start()
 
 			nc.emitter.EmitAsync("new-peer", p)
 		})

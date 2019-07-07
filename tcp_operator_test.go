@@ -31,13 +31,13 @@ func TestPingPong(t *testing.T) {
 	conn1.OnPeer(func(p *go2p.Peer) {
 		clientsWg.Done()
 
-		if p.Address() != "tcp:127.0.0.1:3378" {
-			t.Fatal("unexpected address", p.Address())
+		if p.RemoteAddress() != "tcp:127.0.0.1:3378" {
+			t.Fatal("unexpected address", p.RemoteAddress())
 			return
 		}
 
 		clientsWg.Wait()
-		conn1.Send(go2p.NewMessageFromData([]byte("hello")), p.Address())
+		conn1.Send(go2p.NewMessageFromData([]byte("hello")), p.RemoteAddress())
 	})
 
 	conn2.OnPeer(func(p *go2p.Peer) {
@@ -46,14 +46,14 @@ func TestPingPong(t *testing.T) {
 
 	conn1.OnMessage(func(p *go2p.Peer, m *go2p.Message) {
 		assert.Equal(t, "hello back", m.PayloadGetString())
-		fmt.Printf("from %s: %s\n", p.Address(), m.PayloadGetString())
+		fmt.Printf("from %s: %s\n", p.RemoteAddress(), m.PayloadGetString())
 		msgWg.Done()
 	})
 
 	conn2.OnMessage(func(p *go2p.Peer, m *go2p.Message) {
 		assert.Equal(t, "hello", m.PayloadGetString())
-		fmt.Printf("from %s: %s\n", p.Address(), m.PayloadGetString())
-		go conn2.Send(go2p.NewMessageFromData([]byte("hello back")), p.Address())
+		fmt.Printf("from %s: %s\n", p.RemoteAddress(), m.PayloadGetString())
+		go conn2.Send(go2p.NewMessageFromData([]byte("hello back")), p.RemoteAddress())
 		msgWg.Done()
 	})
 

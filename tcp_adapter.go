@@ -30,8 +30,14 @@ func (a *adapterTCP) Close() {
 	a.conn.Close()
 }
 
-func (a *adapterTCP) Address() string {
+func (a *adapterTCP) RemoteAddress() string {
 	addr := a.conn.RemoteAddr()
+	res := fmt.Sprintf("%s:%s", addr.Network(), addr.String())
+	return res
+}
+
+func (a *adapterTCP) LocalAddress() string {
+	addr := a.conn.LocalAddr()
 	res := fmt.Sprintf("%s:%s", addr.Network(), addr.String())
 	return res
 }

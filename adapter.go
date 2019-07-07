@@ -22,6 +22,9 @@ type Adapter interface {
 	// Close should close the underline connection
 	Close()
 
-	// Address returns the remote address (example: tcp:127.0.0.1:7000)
-	Address() string
+	// LocalAddress returns the local address (example: tcp:127.0.0.1:7000)
+	LocalAddress() string
+
+	// RemoteAddress returns the remote address (example: tcp:127.0.0.1:7000)
+	RemoteAddress() string
 }

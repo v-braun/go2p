@@ -14,29 +14,28 @@ var EmptyRoutesTable = *new(RoutingTable)
 // You can listen to specific endpoints and send messages to them
 // This is similar to a controller/action pattern in HTTP frameworks
 func Routes(rt RoutingTable) (string, MiddlewareFunc) {
-	return Log()
-	// if rt == EmptyRoutesTable {
-	// 	return "routes", func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
-	// 		return Next, nil
-	// 	}
-	// }
+	if rt == EmptyRoutesTable {
 
-	// f := func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
-	// 	op, err := middlewareRoutesImpl(rt, peer, pipe, msg)
-	// 	return op, err
-	// }
-	// return "routes", f
+		return "routes", func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+			return Next, nil
+		}
+	}
+
+	f := func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+		op, err := middlewareRoutesImpl(rt, peer, pipe, msg)
+		return op, err
+	}
+	return "routes", f
 }
 
 // NewMessageRoutedFromString creates a new routed message to the handler given by path
 // with the provided string content
 func NewMessageRoutedFromString(path string, content string) *Message {
-	msg := NewMessageFromString(content)
-	msg.Metadata().Put(annotationKey, path)
+	msg := NewMessageRoutedFromData(path, []byte(content))
 	return msg
 }
 
-// NewMessageRoutedFromString creates a new routed message to the handler given by path
+// NewMessageRoutedFromData creates a new routed message to the handler given by path
 // with the provided data
 func NewMessageRoutedFromData(path string, data []byte) *Message {
 	msg := NewMessageFromData(data)
@@ -45,6 +44,10 @@ func NewMessageRoutedFromData(path string, data []byte) *Message {
 }
 
 func middlewareRoutesImpl(rt RoutingTable, peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+	if pipe.Operation() == Send {
+		return Next, nil
+	}
+
 	routeHdr, found := msg.Metadata().Get(annotationKey)
 	if !found {
 		return Next, nil
@@ -56,7 +59,7 @@ func middlewareRoutesImpl(rt RoutingTable, peer *Peer, pipe *Pipe, msg *Message)
 		return Next, nil
 	}
 
-	route(peer)
+	go route(peer)
 
 	return Next, nil
 }

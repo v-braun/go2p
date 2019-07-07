@@ -52,6 +52,7 @@ func (p *Pipe) process(msg *Message) error {
 
 	// fmt.Printf("next items for %v: %s \n", p.Operation(), nextItems.String())
 	for _, m := range nextItems {
+		fmt.Printf("exec msg: %s remote: %s local: %s action: %s direction: %v \n", msg.localID, p.peer.RemoteAddress(), p.peer.LocalAddress(), m.name, p.op)
 		res, err := m.Execute(p.peer, p, msg)
 		if err != nil {
 			return err

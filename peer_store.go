@@ -122,7 +122,7 @@ func (ps *DefaultPeerStore) LockPeer(addr string, handler func(peer *Peer)) {
 	defer ps.mutex.Unlock()
 
 	for _, p := range ps.peers {
-		if p.io.adapter.Address() == addr {
+		if p.io.adapter.RemoteAddress() == addr {
 			handler(p)
 			return
 		}

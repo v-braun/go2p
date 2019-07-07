@@ -2,7 +2,6 @@ package go2p
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/v-braun/go2p/rsa_utils"
@@ -116,9 +115,8 @@ func isHandshakeMsg(msg *Message) bool {
 }
 
 func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.PrivKey) error {
-	fmt.Printf("handshakePassive: %s\n", peer.Address())
 	if err := handshakeHandleResponse(peer, pipe, msg); err != nil {
-		errors.Wrapf(err, "received message from peer without a handshake | peer: %s", peer.Address())
+		errors.Wrapf(err, "received message from peer without a handshake | peer: %s", peer.RemoteAddress())
 		return err
 	}
 
@@ -127,7 +125,6 @@ func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.Pri
 }
 
 func handshakeActive(peer *Peer, pipe *Pipe, myKey *rsa_utils.PrivKey) error {
-	fmt.Printf("handshakeActive: %s\n", peer.Address())
 	if err := handshakeSend(pipe, myKey); err != nil {
 		return err
 	}
@@ -152,7 +149,7 @@ func handshakeSend(pipe *Pipe, myKey *rsa_utils.PrivKey) error {
 
 func handshakeHandleResponse(peer *Peer, pipe *Pipe, msg *Message) error {
 	if !isHandshakeMsg(msg) {
-		return errors.Errorf("invalid handshake message | peer: %s", peer.Address())
+		return errors.Errorf("invalid handshake message | peer: %s", peer.RemoteAddress())
 	}
 
 	content := msg.PayloadGet()
