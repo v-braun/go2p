@@ -40,17 +40,16 @@ type middlewares []*Middleware
 func newMiddlewares(actions ...*Middleware) middlewares {
 	result := middlewares{}
 	for idx, action := range actions {
-		action.pos = (idx + 1)
+		action.pos = idx
 		result = append(result, action)
 	}
 
 	return result
 }
 
-func (ml middlewares) nextItems(op PipeOperation, pos int) middlewares {
+func (ml middlewares) nextItems(op PipeOperation) middlewares {
 	result := ml.Copy()
 	sort.Sort(result)
-	result = result[pos:]
 	if op == Receive {
 		sort.Sort(sort.Reverse(result))
 	}

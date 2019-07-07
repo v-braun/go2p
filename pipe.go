@@ -3,8 +3,6 @@ package go2p
 import (
 	"errors"
 	"fmt"
-
-	"github.com/v-braun/go2p/rsa_utils"
 )
 
 type PipeOperation int
@@ -23,29 +21,37 @@ var PipeStopProcessing = errors.New("pipe stopped")
 type Pipe struct {
 	peer *Peer
 
-	allActions middlewares
-	op         PipeOperation
+	allActions       middlewares
+	executingActions middlewares
+	op               PipeOperation
 
 	pos int // instruction pointer
 }
 
-func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int) *Pipe {
+func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int, fromPos int, toPos int) *Pipe {
+	if pos < fromPos {
+		panic(fmt.Sprintf("invalid fromPos: %d is less than pos: %d", fromPos, pos))
+	}
+	if pos > toPos {
+		panic(fmt.Sprintf("invalid toPos: %d is less than pos: %d", toPos, pos))
+	}
+
 	p := new(Pipe)
 
 	p.op = op
 	p.pos = pos
 	p.allActions = allActions
+	p.executingActions = allActions[fromPos:toPos]
 
 	p.peer = peer
 
 	return p
 }
 func (p *Pipe) process(msg *Message) error {
-	nextItems := p.allActions.nextItems(p.op, p.pos)
+	nextItems := p.executingActions.nextItems(p.op)
 
-	fmt.Printf("next items for %v: %s \n", p.Operation(), nextItems.String())
+	// fmt.Printf("next items for %v: %s \n", p.Operation(), nextItems.String())
 	for _, m := range nextItems {
-		fmt.Printf("%s | %s [%v] %s (%d) pipePos: %d dara: {%s} (%d) \n", msg.localID, p.peer.Address(), p.Operation(), m.name, m.pos, p.pos, rsa_utils.PrintableStr(msg.PayloadGet(), 10), len(msg.PayloadGet()))
 		res, err := m.Execute(p.peer, p, msg)
 		if err != nil {
 			return err
@@ -53,20 +59,33 @@ func (p *Pipe) process(msg *Message) error {
 			return PipeStopProcessing
 		}
 
-		p.pos++
+		if p.op == Send {
+			p.pos++
+		} else {
+			p.pos--
+		}
+
 	}
 
 	return nil
 }
 
 func (p *Pipe) Send(msg *Message) error {
-	subPipe := newPipe(p.peer, p.allActions, Send, p.pos+1)
+	pos := p.pos + 1
+	from := p.pos + 1
+	to := len(p.allActions)
+
+	if pos > to {
+		err := p.peer.io.sendMsg(msg)
+		return err
+	}
+
+	subPipe := newPipe(p.peer, p.allActions, Send, pos, from, to)
 
 	if err := subPipe.process(msg); err != nil {
 		return err
 	}
 
-	fmt.Printf("send %s... to %s\n", rsa_utils.PrintableStr(msg.PayloadGet(), 8), p.peer.Address())
 	err := p.peer.io.sendMsg(msg)
 	return err
 }
@@ -78,10 +97,13 @@ func (p *Pipe) Receive() (*Message, error) {
 	} else if err != nil {
 		return nil, err
 	} else {
-		fmt.Printf("received %s... from %s\n", rsa_utils.PrintableStr(msg.PayloadGet(), 8), p.peer.Address())
-
-		subPipe := newPipe(p.peer, p.allActions, Receive, p.pos+1)
-		err = subPipe.process(msg)
+		pos := p.pos + 1
+		from := p.pos + 1
+		to := len(p.allActions)
+		if pos <= to {
+			subPipe := newPipe(p.peer, p.allActions, Receive, pos, from, to)
+			err = subPipe.process(msg)
+		}
 	}
 
 	return msg, err

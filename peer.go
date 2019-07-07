@@ -55,7 +55,14 @@ func (p *Peer) start() {
 }
 
 func (p *Peer) processPipe(m *Message, op PipeOperation) {
-	pipe := newPipe(p, p.middleware, op, 1)
+	from := 0
+	to := len(p.middleware)
+	pos := 0
+	if op == Receive {
+		pos = to
+	}
+
+	pipe := newPipe(p, p.middleware, op, pos, from, to)
 	err := pipe.process(m)
 
 	if err == PipeStopProcessing {

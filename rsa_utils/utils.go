@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
-	"encoding/base64"
 	"errors"
 )
 
@@ -86,13 +85,4 @@ func (self *PubKey) calcBytes() error {
 func (self *PubKey) Encrypt(decrypted []byte) ([]byte, error) {
 	encrypted, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, self.pub, decrypted, nil)
 	return encrypted, err
-}
-
-func PrintableStr(data []byte, maxLen int) string {
-	if len(data) > maxLen {
-		data = data[:maxLen]
-	}
-
-	result := base64.StdEncoding.EncodeToString([]byte(data))
-	return result
 }

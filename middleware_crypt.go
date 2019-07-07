@@ -76,7 +76,7 @@ func encrypt(msg *Message, theirKey *rsa_utils.PubKey) error {
 	content := msg.PayloadGet()
 	contentEnc, err := theirKey.Encrypt(content)
 	if err != nil {
-		return errors.Wrapf(err, "could not encrypt message (len: %d, data: %s...)", len(content), rsa_utils.PrintableStr(content, 8))
+		return errors.Wrapf(err, "could not encrypt message (len: %d, data: %s...)", len(content))
 	}
 
 	msg.PayloadSet(contentEnc)
