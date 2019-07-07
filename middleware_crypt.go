@@ -12,6 +12,9 @@ var prefixHandshake = []byte("hello:")
 const cryptLabel = "middleware.crypt"
 const headerKeyPubKey = "middleware.crypt.pubkey"
 
+// Crypt returns the crypto middleware.
+// This middleware handles encryption in your communication
+// PublicKeys are exchanged on first peer communication
 func Crypt() (string, MiddlewareFunc) {
 	key, err := crypt.Generate()
 	if err != nil {
@@ -66,10 +69,10 @@ func messageHandle(peer *Peer, pipe *Pipe, msg *Message, myKey *crypt.PrivKey) e
 	if pipe.Operation() == Send {
 		err := encrypt(msg, theirKey, myKey)
 		return err
-	} else {
-		err := decrypt(msg, myKey, theirKey)
-		return err
 	}
+
+	err := decrypt(msg, myKey, theirKey)
+	return err
 }
 
 func encrypt(msg *Message, theirKey *crypt.PubKey, myKey *crypt.PrivKey) error {

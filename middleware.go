@@ -5,34 +5,40 @@ import (
 	"sort"
 )
 
+// MiddlewareResult represents a result returned by a middleware
+// possible values are *Stop* and *Next*
 type MiddlewareResult int
 
 const (
+	// Stop will be returned by a middleware when the pipe execution should be stopped
 	Stop MiddlewareResult = iota
+
+	// Next will be returned by a middleware when the pipe execution should be continued
 	Next MiddlewareResult = iota
 )
 
+// MiddlewareFunc represents a middleware implementation function
 type MiddlewareFunc func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error)
 
+// Middleware represents a wrapped middleware function with
+// additional information for internal usage
 type Middleware struct {
-	Execute MiddlewareFunc
+	execute MiddlewareFunc
 	name    string
 	pos     int
 }
 
+// NewMiddleware wraps the provided action into a Middleware instance
 func NewMiddleware(name string, action MiddlewareFunc) *Middleware {
 	return &Middleware{
 		name:    name,
-		Execute: action,
+		execute: action,
 	}
 }
 
-func (self *Middleware) Pos() int {
-	return self.pos
-}
-
-func (self *Middleware) String() string {
-	return fmt.Sprintf("%s (%d)", self.name, self.pos)
+// String returns the string representation of this instance
+func (m *Middleware) String() string {
+	return fmt.Sprintf("%s (%d)", m.name, m.pos)
 }
 
 type middlewares []*Middleware

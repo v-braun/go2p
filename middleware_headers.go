@@ -8,6 +8,10 @@ import (
 	"github.com/emirpasic/gods/maps/hashmap"
 )
 
+// Headers creates the *headers* middleware store the Message.Annotations() within the payload.
+// With this middleware you can provide (http protocol) "header" like
+// behavior into your communication.
+// You can use it to annotate messages with id's or other information
 func Headers() (string, MiddlewareFunc) {
 	return "headers", middlewareHeadersImpl
 }

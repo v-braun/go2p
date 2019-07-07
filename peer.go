@@ -9,6 +9,7 @@ import (
 	"github.com/emirpasic/gods/maps/hashmap"
 )
 
+// Peer represents a connection to a remote peer
 type Peer struct {
 	io         *adapterIO
 	send       chan *Message

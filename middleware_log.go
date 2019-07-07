@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// Log creates a logging middleware for in and outgoing messages
 func Log() (string, MiddlewareFunc) {
 	return "log", middlewareLogImpl
 }

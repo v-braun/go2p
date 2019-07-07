@@ -7,6 +7,9 @@ import (
 	"github.com/v-braun/awaiter"
 )
 
+// PeerStore is a store of peers used to manage connections to the peers.
+// It can be used to keep only a limit of opened connections or to filter specific
+// peers
 type PeerStore interface {
 	AddPeer(peer *Peer) error
 	RemovePeer(peer *Peer)
@@ -18,6 +21,8 @@ type PeerStore interface {
 	Stop()
 }
 
+// DefaultPeerStore is a basic implementation of a PeerStore
+// It limits simultaneously connected peers to a configured capacity
 type DefaultPeerStore struct {
 	peers    []*Peer
 	mutex    *sync.Mutex
@@ -26,6 +31,8 @@ type DefaultPeerStore struct {
 	capacity int
 }
 
+// NewDefaultPeerStore creates a new basic PeerStore that limits
+// simultaneously connected peers by the provided capacity
 func NewDefaultPeerStore(capacity int) PeerStore {
 	ps := new(DefaultPeerStore)
 	ps.peers = make([]*Peer, 0)
@@ -37,6 +44,7 @@ func NewDefaultPeerStore(capacity int) PeerStore {
 	return ps
 }
 
+// AddPeer adds the given peer to the store
 func (ps *DefaultPeerStore) AddPeer(peer *Peer) error {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
@@ -46,17 +54,22 @@ func (ps *DefaultPeerStore) AddPeer(peer *Peer) error {
 	return nil
 }
 
+// OnPeerAdd registers the given handler and calls it when a new peer should be added
 func (ps *DefaultPeerStore) OnPeerAdd(handler func(peer *Peer)) {
 	ps.emitter.On("add-peer", func(args []interface{}) {
 		handler(args[0].(*Peer))
 	})
 }
+
+// OnPeerWantRemove registers the given handler and calls it when
+// a peer should be removed
 func (ps *DefaultPeerStore) OnPeerWantRemove(handler func(peer *Peer)) {
 	ps.emitter.On("remove-peer", func(args []interface{}) {
 		handler(args[0].(*Peer))
 	})
 }
 
+// RemovePeer will remove the given peer from the store
 func (ps *DefaultPeerStore) RemovePeer(peer *Peer) {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
@@ -73,6 +86,8 @@ func (ps *DefaultPeerStore) RemovePeer(peer *Peer) {
 		ps.peers = append(ps.peers[:peerIdx], ps.peers[peerIdx+1:]...)
 	}
 }
+
+// IteratePeer will call the given handler for each peer
 func (ps *DefaultPeerStore) IteratePeer(handler func(peer *Peer)) {
 	ps.mutex.Lock()
 	peersCopy := make([]*Peer, len(ps.peers))
@@ -84,6 +99,7 @@ func (ps *DefaultPeerStore) IteratePeer(handler func(peer *Peer)) {
 	}
 }
 
+// Start the background routines that monitors all connected peers
 func (ps *DefaultPeerStore) Start() {
 	ps.awaiter.Go(func() {
 		ticker := time.NewTicker(time.Second * 10)
@@ -98,6 +114,7 @@ func (ps *DefaultPeerStore) Start() {
 	})
 }
 
+// Stop the background monitoring
 func (ps *DefaultPeerStore) Stop() {
 	ps.awaiter.Cancel()
 	ps.awaiter.AwaitSync()
@@ -117,6 +134,8 @@ func (ps *DefaultPeerStore) checkCapa() {
 	ps.emitter.EmitAsync("remove-peer", peer2Rem)
 }
 
+// LockPeer is used to search for a peer, locks it and calls the handler
+// after the handler was called the peer will be unlocked
 func (ps *DefaultPeerStore) LockPeer(addr string, handler func(peer *Peer)) {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()

@@ -29,7 +29,7 @@ func NewTcpOperator(network string, localAddr string) *OperatorTCP {
 
 func (o *OperatorTCP) Dial(network string, addr string) error {
 	if network != "tcp" {
-		return InvalidNetworkError
+		return ErrInvalidNetwork
 	}
 
 	conn, err := net.Dial(network, addr)
@@ -56,7 +56,7 @@ func (o *OperatorTCP) OnError(handler func(err error)) {
 
 func (o *OperatorTCP) Start() error {
 	if o.localNetwok != "tcp" {
-		return InvalidNetworkError
+		return ErrInvalidNetwork
 	}
 
 	listener, err := net.Listen(o.localNetwok, o.localAddr)

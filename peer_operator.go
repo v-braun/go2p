@@ -2,8 +2,8 @@ package go2p
 
 import "errors"
 
-// InvalidNetworkError represents an invalid network part in the given address
-var InvalidNetworkError = errors.New("invalid network")
+// ErrInvalidNetwork represents an invalid network part in the given address
+var ErrInvalidNetwork = errors.New("invalid network")
 
 // PeerOperator connect peers to the current network connection
 // I provides functionalities for dialing (active connection)
