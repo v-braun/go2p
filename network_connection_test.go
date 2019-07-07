@@ -2,8 +2,10 @@ package go2p_test
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
@@ -73,12 +75,16 @@ func startNetworks(t *testing.T, networks ...*go2p.NetworkConnection) bool {
 func registerPeerErrorHandlers(t *testing.T, networks ...*go2p.NetworkConnection) {
 	for i, n := range networks {
 		n.OnPeerError(func(p *go2p.Peer, err error) {
-			fmt.Printf("conn%d err: %+v", i, errors.Wrap(err, "unexpected peer error"))
+			msg := fmt.Sprintf("conn%d err: %+v", i, errors.Wrap(err, "unexpected peer error"))
+			fmt.Println(msg)
+			t.Fatal(msg)
 		})
 
-		n.OnPeerDisconnect(func(p *go2p.Peer) {
-			fmt.Printf("conn%d disconnect: %+v", i, p.RemoteAddress())
-		})
+		// n.OnPeerDisconnect(func(p *go2p.Peer) {
+		// 	msg := fmt.Sprintf("conn%d disconnect: %+v\n", i, p.RemoteAddress())
+		// 	fmt.Println(msg)
+		// 	t.Fatal(msg)
+		// })
 	}
 }
 
@@ -197,5 +203,55 @@ func TestRouting(t *testing.T) {
 
 	conn1.net.Stop()
 	conn2.net.Stop()
+}
 
+func TestLargeMessages(t *testing.T) {
+
+	var conn1 *networkConnWithAddress
+	var conn2 *networkConnWithAddress
+	largeMsg := genLargeMessage(256)
+	testDone := sync.WaitGroup{}
+	testDone.Add(1)
+	conn1, conn2 = createTestNetworks(t, &map[string]func(peer *go2p.Peer){
+		"say": func(peer *go2p.Peer) {
+			assert.Equal(t, largeMsg, "")
+			testDone.Done()
+		},
+	})
+
+	peerConnectedWg := sync.WaitGroup{}
+	peerConnectedWg.Add(2)
+	conn1.net.OnPeer(func(peer *go2p.Peer) {
+		peerConnectedWg.Done()
+	})
+
+	conn2.net.OnPeer(func(peer *go2p.Peer) {
+		peerConnectedWg.Done()
+	})
+
+	registerPeerErrorHandlers(t, conn1.net, conn2.net)
+	if !startNetworks(t, conn1.net, conn2.net) {
+		return
+	}
+
+	conn1.net.ConnectTo("tcp", conn2.addr)
+	peerConnectedWg.Wait()
+	conn1.net.Send(go2p.NewMessageRoutedFromString("say", largeMsg), conn2.fullAddr)
+
+	testDone.Wait()
+
+	conn1.net.Stop()
+	conn2.net.Stop()
+}
+
+func genLargeMessage(chars int) string {
+	charset := "abcdefghijklmnopqrstuvwxyz" +
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	b := make([]byte, chars)
+	for i := range b {
+		b[i] = charset[rnd.Intn(len(charset))]
+	}
+	return string(b)
 }

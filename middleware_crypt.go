@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/pkg/errors"
-	"github.com/v-braun/go2p/rsa_utils"
+	"github.com/v-braun/go2p/crypt"
 )
 
 var prefixHandshake = []byte("hello:")
@@ -13,7 +13,7 @@ const cryptLabel = "middleware.crypt"
 const headerKeyPubKey = "middleware.crypt.pubkey"
 
 func Crypt() (string, MiddlewareFunc) {
-	key, err := rsa_utils.Generate()
+	key, err := crypt.Generate()
 	if err != nil {
 		panic(errors.Wrap(err, "failed gen key"))
 	}
@@ -26,7 +26,7 @@ func Crypt() (string, MiddlewareFunc) {
 	return "Crypt", f
 }
 
-func middlewareCryptImpl(myKey *rsa_utils.PrivKey, peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+func middlewareCryptImpl(myKey *crypt.PrivKey, peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
 
 	if isHandshakeDone(peer, pipe) {
 		// handshake done, just handle the message
@@ -59,21 +59,22 @@ func middlewareCryptImpl(myKey *rsa_utils.PrivKey, peer *Peer, pipe *Pipe, msg *
 	return Next, err
 }
 
-func messageHandle(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.PrivKey) error {
+func messageHandle(peer *Peer, pipe *Pipe, msg *Message, myKey *crypt.PrivKey) error {
+	key, _ := peer.Metadata().Get(headerKeyPubKey)
+	theirKey := key.(*crypt.PubKey)
+
 	if pipe.Operation() == Send {
-		key, _ := peer.Metadata().Get(headerKeyPubKey)
-		theirKey := key.(*rsa_utils.PubKey)
-		err := encrypt(msg, theirKey)
+		err := encrypt(msg, theirKey, myKey)
 		return err
 	} else {
-		err := decrypt(msg, myKey)
+		err := decrypt(msg, myKey, theirKey)
 		return err
 	}
 }
 
-func encrypt(msg *Message, theirKey *rsa_utils.PubKey) error {
+func encrypt(msg *Message, theirKey *crypt.PubKey, myKey *crypt.PrivKey) error {
 	content := msg.PayloadGet()
-	contentEnc, err := theirKey.Encrypt(content)
+	contentEnc, err := theirKey.Encrypt(myKey, content)
 	if err != nil {
 		return errors.Wrapf(err, "could not encrypt message (len: %d)", len(content))
 	}
@@ -83,10 +84,10 @@ func encrypt(msg *Message, theirKey *rsa_utils.PubKey) error {
 	return nil
 }
 
-func decrypt(msg *Message, myKey *rsa_utils.PrivKey) error {
+func decrypt(msg *Message, myKey *crypt.PrivKey, theirKey *crypt.PubKey) error {
 	content := msg.PayloadGet()
 	contentLen := len(content)
-	content, err := myKey.Decrypt(content)
+	content, err := myKey.Decrypt(theirKey, content)
 	if err != nil {
 		return errors.Wrapf(err, "could not decrypt (len: %d)", contentLen)
 	}
@@ -114,7 +115,7 @@ func isHandshakeMsg(msg *Message) bool {
 	return equal
 }
 
-func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.PrivKey) error {
+func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *crypt.PrivKey) error {
 	if err := handshakeHandleResponse(peer, pipe, msg); err != nil {
 		errors.Wrapf(err, "received message from peer without a handshake | peer: %s", peer.RemoteAddress())
 		return err
@@ -124,7 +125,7 @@ func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *rsa_utils.Pri
 	return err
 }
 
-func handshakeActive(peer *Peer, pipe *Pipe, myKey *rsa_utils.PrivKey) error {
+func handshakeActive(peer *Peer, pipe *Pipe, myKey *crypt.PrivKey) error {
 	if err := handshakeSend(pipe, myKey); err != nil {
 		return err
 	}
@@ -138,7 +139,7 @@ func handshakeActive(peer *Peer, pipe *Pipe, myKey *rsa_utils.PrivKey) error {
 	return err
 }
 
-func handshakeSend(pipe *Pipe, myKey *rsa_utils.PrivKey) error {
+func handshakeSend(pipe *Pipe, myKey *crypt.PrivKey) error {
 	rq := NewMessage()
 
 	content := append(prefixHandshake, myKey.PubKey.Bytes...)
@@ -156,7 +157,7 @@ func handshakeHandleResponse(peer *Peer, pipe *Pipe, msg *Message) error {
 
 	result := content[len(prefixHandshake):]
 
-	key, err := rsa_utils.PubFromBytes(result)
+	key, err := crypt.PubFromBytes(result)
 	if err != nil {
 		return err
 	}
