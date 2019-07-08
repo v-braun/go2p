@@ -44,15 +44,62 @@ go get github.com/v-braun/go2p
 
 ## Usage
 
-```
-todo...
+The simplest way to use this framework is to create a new instance of the full configured TCP based network stack:
+
+``` go
+    localAddr := "localhost:7077"
+	net := go2p.NewNetworkConnectionTCP(*localAddr, &map[string]func(peer *go2p.Peer, msg *go2p.Message){
+		"msg": func(peer *go2p.Peer, msg *go2p.Message) {
+			fmt.Printf("%s > %s\n", peer.RemoteAddress(), msg.PayloadGetString())
+		},
+    })
+    
+    net.OnPeer(func(p *go2p.Peer) {
+		fmt.Printf("new peer: %s\n", p.RemoteAddress())
+    })
+    
+    err := net.Start()
+	if err != nil {
+		panic(err)
+    }
+
+    defer net.Stop()
+    
+
+    // connects to another peer via tcp
+    net.ConnectTo("tcp", "localhost:7077")
+
+    // send a message to the 'msg' route 
+    net.SendBroadcast(go2p.NewMessageRoutedFromString("msg", "hello go2p"))
+
+
+
 ```
 
-## Configuration
+## Advanced Usage
 
+The function NewNetworkConnectionTCP is a shorthand for the advanced configuration of a network stack. 
+
+``` go
+	op := go2p.NewTCPOperator("tcp", localAddr) // creates a tcp based operator (net.Dialer and net.Listener)
+	peerStore := go2p.NewDefaultPeerStore(10) // creates a simple peer store that limits connections to 10
+
+	conn := go2p.NewNetworkConnection(). // creates a new instance of the builder
+		WithOperator(op). // adds the operator to the network stack
+		WithPeerStore(peerStore). // adds the peer store to the network stack
+		WithMiddleware(go2p.Routes(routes)). // adds the routes middleware
+		WithMiddleware(go2p.Headers()). // adds the headers middleware
+		WithMiddleware(go2p.Crypt()). // adds encryption
+		WithMiddleware(go2p.Log()). // adds logging
+		Build() // creates the network 
 ```
-todo...
-```
+
+This code creates a new NetworkConnection that use tcp communication, a default PeerStore and some middlewares.  
+Outgoing messages will now pass the following middlewares:  
+_msg_ -> Routing -> Headers -> Crypt -> Log -> _network_  
+Incomming messages will pass the following middlewares  
+_app logic_ <- Routing <- Headers <- Crypt <- Log <- _network_
+
 
 
 
