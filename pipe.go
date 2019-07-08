@@ -2,7 +2,6 @@ package go2p
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/sirupsen/logrus"
 )
@@ -38,13 +37,6 @@ type Pipe struct {
 }
 
 func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int, fromPos int, toPos int) *Pipe {
-	if pos < fromPos {
-		panic(fmt.Sprintf("invalid fromPos: %d is less than pos: %d", fromPos, pos))
-	}
-	if pos > toPos {
-		panic(fmt.Sprintf("invalid toPos: %d is less than pos: %d", toPos, pos))
-	}
-
 	p := new(Pipe)
 
 	p.op = op
@@ -65,6 +57,7 @@ func (p *Pipe) process(msg *Message) error {
 			"name":    m.name,
 			"pos":     m.pos,
 			"msg-len": len(msg.PayloadGet()),
+			"op":      p.op.String(),
 		}).Debug("execute middleware")
 
 		res, err := m.execute(p.peer, p, msg)
