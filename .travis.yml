@@ -16,6 +16,12 @@ go:
 git:
   depth: 1
 
+# caching for gopath and pkg
+cache:
+  directories:
+    - $HOME/.cache/go-build
+    - $HOME/gopath/pkg/mod  
+
 # Don't email me the results of the test runs.
 notifications:
   email: false
