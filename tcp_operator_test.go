@@ -1,14 +1,45 @@
-package go2p_test
+package go2p
 
 import (
 	"fmt"
 	"sync"
 	"testing"
 
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/v-braun/go2p"
 )
+
+func TestTCPOperatorNegativeCases(t *testing.T) {
+	op := NewTCPOperator("ttt", "10.10.10.10")
+
+	err := op.Dial("ttt", "foo")
+	assert.Error(t, err)
+
+	err = op.Dial("tcp", "foo")
+	assert.Error(t, err)
+
+	err = op.Start()
+	assert.Error(t, err)
+
+	op = NewTCPOperator("tcp", "foo")
+	err = op.Start()
+	assert.Error(t, err)
+
+	port, _ := freeport.GetFreePort()
+	op = NewTCPOperator("tcp", fmt.Sprintf("localhost:%d", port))
+	onErrCalled := new(sync.WaitGroup)
+	onErrCalled.Add(1)
+	op.OnError(func(err error) {
+		assert.Error(t, err)
+		onErrCalled.Done()
+	})
+
+	op.Start()
+	op.server.Close()
+
+	onErrCalled.Wait()
+
+}
 
 func TestPingPong(t *testing.T) {
 	clientsWg := new(sync.WaitGroup)
@@ -17,18 +48,18 @@ func TestPingPong(t *testing.T) {
 	msgWg := new(sync.WaitGroup)
 	msgWg.Add(2)
 
-	op1 := go2p.NewTCPOperator("tcp", "127.0.0.1:3377")
-	op2 := go2p.NewTCPOperator("tcp", "127.0.0.1:3378")
+	op1 := NewTCPOperator("tcp", "127.0.0.1:3377")
+	op2 := NewTCPOperator("tcp", "127.0.0.1:3378")
 
-	conn1 := go2p.NewNetworkConnection().
+	conn1 := NewNetworkConnection().
 		WithOperator(op1).
 		Build()
 
-	conn2 := go2p.NewNetworkConnection().
+	conn2 := NewNetworkConnection().
 		WithOperator(op2).
 		Build()
 
-	conn1.OnPeer(func(p *go2p.Peer) {
+	conn1.OnPeer(func(p *Peer) {
 		clientsWg.Done()
 
 		if p.RemoteAddress() != "tcp:127.0.0.1:3378" {
@@ -37,23 +68,23 @@ func TestPingPong(t *testing.T) {
 		}
 
 		clientsWg.Wait()
-		conn1.Send(go2p.NewMessageFromData([]byte("hello")), p.RemoteAddress())
+		conn1.Send(NewMessageFromData([]byte("hello")), p.RemoteAddress())
 	})
 
-	conn2.OnPeer(func(p *go2p.Peer) {
+	conn2.OnPeer(func(p *Peer) {
 		clientsWg.Done()
 	})
 
-	conn1.OnMessage(func(p *go2p.Peer, m *go2p.Message) {
+	conn1.OnMessage(func(p *Peer, m *Message) {
 		assert.Equal(t, "hello back", m.PayloadGetString())
 		fmt.Printf("from %s: %s\n", p.RemoteAddress(), m.PayloadGetString())
 		msgWg.Done()
 	})
 
-	conn2.OnMessage(func(p *go2p.Peer, m *go2p.Message) {
+	conn2.OnMessage(func(p *Peer, m *Message) {
 		assert.Equal(t, "hello", m.PayloadGetString())
 		fmt.Printf("from %s: %s\n", p.RemoteAddress(), m.PayloadGetString())
-		go conn2.Send(go2p.NewMessageFromData([]byte("hello back")), p.RemoteAddress())
+		go conn2.Send(NewMessageFromData([]byte("hello back")), p.RemoteAddress())
 		msgWg.Done()
 	})
 
