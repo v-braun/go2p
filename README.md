@@ -99,12 +99,12 @@ The function NewNetworkConnectionTCP is a shorthand for the advanced configurati
 This code creates a new NetworkConnection that use tcp communication, a default PeerStore and some middlewares.  
 Outgoing messages will now pass the following middlewares:  
 ``` 
-_msg_ -> Routing -> Headers -> Crypt -> Log -> _network_  
+(app logic) -> Routing -> Headers -> Crypt -> Log -> (network) 
 ``` 
 
 Incomming messages will pass the following middlewares  
 ``` 
-_app logic_ <- Routing <- Headers <- Crypt <- Log <- _network_
+(app logic) <- Routing <- Headers <- Crypt <- Log <- (network)
 ``` 
 
 
