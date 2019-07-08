@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -19,7 +20,8 @@ func handleReadWriteErr(err error, msg string) error {
 	}
 
 	if netErr, ok := err.(*net.OpError); ok {
-		if netErr.Err.Error() == "use of closed network connection" {
+		netErrMsg := netErr.Err.Error()
+		if strings.Contains(netErrMsg, "use of closed network connection") {
 			return DisconnectedError
 		}
 	}
