@@ -95,7 +95,6 @@ func (o *OperatorTCP) listen(ctx context.Context) {
 				o.emitter.EmitAsync("new-peer", adapter)
 			} else if tmpErr, ok := err.(net.Error); ok && tmpErr.Temporary() {
 				o.emitter.EmitAsync("error", errors.Wrap(err, "temp error during listening"), true)
-				continue
 			} else if err != nil && ctx.Err() == nil {
 				o.emitter.EmitAsync("error", errors.Wrap(err, "fatal error, wil stop listening"))
 				break
