@@ -1,8 +1,6 @@
 package go2p
 
 import (
-	"fmt"
-
 	"github.com/v-braun/awaiter"
 
 	"github.com/emirpasic/gods/maps"
@@ -42,26 +40,19 @@ func (p *Peer) start() <-chan struct{} {
 
 	p.io.start()
 
-	fmt.Printf("starting peer wait loop %s | %s \n", p.LocalAddress(), p.RemoteAddress())
-
 	p.awaiter.Go(func() {
-		fmt.Printf("started peer wait loop %s | %s \n", p.LocalAddress(), p.RemoteAddress())
 		close(done)
 		for {
 			select {
 			case m := <-p.io.receive:
-				fmt.Printf("process peer receive %s <- %s \n", p.LocalAddress(), p.RemoteAddress())
 				p.processPipe(m, Receive)
 				continue
 			case m := <-p.send:
-				fmt.Printf("process peer send %s -> %s msg: %s\n", p.LocalAddress(), p.RemoteAddress(), m.PayloadGetString())
 				p.processPipe(m, Send)
 				continue
 			case <-p.awaiter.CancelRequested():
 				return
-				// default:
-				// fmt.Printf("process peer wait %s -> %s \n", p.LocalAddress(), p.RemoteAddress())
-				// time.Sleep(time.Second * 1)
+
 			}
 		}
 	})
@@ -70,7 +61,6 @@ func (p *Peer) start() <-chan struct{} {
 }
 
 func (p *Peer) processPipe(m *Message, op PipeOperation) {
-	defer fmt.Printf("processPipe done %s\n", p.RemoteAddress())
 	from := 0
 	to := len(p.middleware)
 	pos := 0

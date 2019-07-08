@@ -1,5 +1,7 @@
 package go2p
 
+import "github.com/sirupsen/logrus"
+
 var annotationKey = "middleware.routes"
 
 // RoutingTable represents handler registered by a path.
@@ -15,7 +17,6 @@ var EmptyRoutesTable = *new(RoutingTable)
 // This is similar to a controller/action pattern in HTTP frameworks
 func Routes(rt RoutingTable) (string, MiddlewareFunc) {
 	if rt == EmptyRoutesTable {
-
 		return "routes", func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
 			return Next, nil
 		}
@@ -44,21 +45,28 @@ func NewMessageRoutedFromData(path string, data []byte) *Message {
 }
 
 func middlewareRoutesImpl(rt RoutingTable, peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+	var log = newLogger("middleware_routes")
 	if pipe.Operation() == Send {
 		return Next, nil
 	}
 
 	routeHdr, found := msg.Metadata().Get(annotationKey)
 	if !found {
+		log.Debugf("msg has no %s key, skip routing", annotationKey)
 		return Next, nil
 	}
 
 	routeStr := routeHdr.(string)
 	route, hasRoute := (*rt)[routeStr]
 	if !hasRoute {
+		log.WithFields(logrus.Fields{
+			"route": route,
+			"table": rt,
+		}).Warn("found routing key in message, but miss value in routing table")
 		return Next, nil
 	}
 
+	log.WithField("route", routeStr).Debug("execute route")
 	go route(peer, msg)
 
 	return Next, nil

@@ -15,7 +15,7 @@ func middlewareLogImpl(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, 
 	directions[Receive] = "<--in"
 
 	txt := fmt.Sprintf("%s %s (%d bytes) - local endpoint: %s", peer.RemoteAddress(), directions[pipe.Operation()], len(msg.PayloadGet()), peer.LocalAddress())
-	fmt.Sprintln(txt)
+	newLogger("middleware_log").Debug(txt)
 
 	return Next, nil
 }

@@ -3,6 +3,8 @@ package go2p
 import (
 	"errors"
 	"fmt"
+
+	"github.com/sirupsen/logrus"
 )
 
 // PipeOperation represents the pipe direction (Send or Receive)
@@ -31,6 +33,8 @@ type Pipe struct {
 	op               PipeOperation
 
 	pos int // instruction pointer
+
+	log *logrus.Entry
 }
 
 func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int, fromPos int, toPos int) *Pipe {
@@ -47,6 +51,7 @@ func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int, from
 	p.pos = pos
 	p.allActions = allActions
 	p.executingActions = allActions[fromPos:toPos]
+	p.log = newLogger("pipe")
 
 	p.peer = peer
 
@@ -55,11 +60,21 @@ func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int, from
 func (p *Pipe) process(msg *Message) error {
 	nextItems := p.executingActions.nextItems(p.op)
 
-	// fmt.Printf("next items for %v: %s \n", p.Operation(), nextItems.String())
 	for _, m := range nextItems {
-		fmt.Printf("exec msg: %s remote: %s local: %s action: %s direction: %v \n", msg.localID, p.peer.RemoteAddress(), p.peer.LocalAddress(), m.name, p.op)
+		p.log.WithFields(logrus.Fields{
+			"name":    m.name,
+			"pos":     m.pos,
+			"msg-len": len(msg.PayloadGet()),
+		}).Debug("execute middleware")
+
 		res, err := m.execute(p.peer, p, msg)
 		if err != nil {
+			p.log.WithFields(logrus.Fields{
+				"name":    m.name,
+				"pos":     m.pos,
+				"msg-len": len(msg.PayloadGet()),
+				"err":     err,
+			}).Error("middleware error")
 			return err
 		} else if res == Stop {
 			return ErrPipeStopProcessing

@@ -88,7 +88,6 @@ func (priv *PrivKey) Decrypt(pub *PubKey, encryptedData []byte) ([]byte, error) 
 	}
 
 	nonce := encryptedData[encryptedPassLen : encryptedPassLen+nonceLen]
-	fmt.Printf("DECR pass: %x nonce: %x \n", decryptedPass, nonce)
 	encryptedData = encryptedData[encryptedPassLen+nonceLen:]
 	decryptedData, err := dec(decryptedPass, nonce, encryptedData)
 	if err != nil {
@@ -198,7 +197,6 @@ func (pub *PubKey) Encrypt(priv *PrivKey, decrypted []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Printf("ENCR pass: %x nonce: %x \n", decryptedPass, nonce)
 	encryptedPass, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pub.pub, decryptedPass, nil)
 	if err != nil {
 		return nil, err

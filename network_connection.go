@@ -1,9 +1,8 @@
 package go2p
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // NetworkConnectionBuilder provides a fluent interface to
@@ -48,6 +47,7 @@ func (b *NetworkConnectionBuilder) Build() *NetworkConnection {
 	nc.operators = b.operators
 	nc.emitter = newEventEmitter()
 	nc.peerStore = b.peerStore
+	nc.log = newLogger("network-connection")
 
 	return nc
 }
@@ -82,12 +82,31 @@ type NetworkConnection struct {
 	operators   []PeerOperator
 	emitter     *eventEmitter
 	peerStore   PeerStore
+	log         *logrus.Entry
 }
 
 // Send will send the provided message to the given address
 func (nc *NetworkConnection) Send(msg *Message, addr string) {
 	nc.peerStore.LockPeer(addr, func(peer *Peer) {
-		fmt.Printf("sending message: %s to peer %s\n", msg.PayloadGetString(), peer.RemoteAddress())
+		nc.log.WithFields(logrus.Fields{
+			"local":  peer.LocalAddress(),
+			"remote": peer.RemoteAddress(),
+			"len":    len(msg.PayloadGet()),
+		}).Debug("send messag")
+
+		peer.send <- msg
+	})
+}
+
+// SendBroadcast will send the given message to all peers
+func (nc *NetworkConnection) SendBroadcast(msg *Message) {
+	nc.peerStore.IteratePeer(func(peer *Peer) {
+		nc.log.WithFields(logrus.Fields{
+			"local":  peer.LocalAddress(),
+			"remote": peer.RemoteAddress(),
+			"len":    len(msg.PayloadGet()),
+		}).Debug("send messag")
+
 		peer.send <- msg
 	})
 }
@@ -95,12 +114,19 @@ func (nc *NetworkConnection) Send(msg *Message, addr string) {
 // ConnectTo will Dial the provided peer by the given network
 func (nc *NetworkConnection) ConnectTo(network string, addr string) {
 	for _, op := range nc.operators {
+		nc.log.WithFields(logrus.Fields{
+			"network": network,
+			"addr":    addr,
+		}).Debug("dial peer")
+
 		op.Dial(network, addr)
 	}
 }
 
 // Start will start up the p2p network stack
 func (nc *NetworkConnection) Start() error {
+	nc.log.Debug("start network")
+
 	nc.peerStore.OnPeerAdd(func(peer *Peer) {
 		nc.emitter.EmitAsync("peer-new", peer)
 	})
