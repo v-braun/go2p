@@ -44,6 +44,8 @@ go get github.com/v-braun/go2p
 
 ## Usage
 
+> You like code? Checkout the [chat example](https://github.com/v-braun/go2p/blob/master/examples/chat/main.go)
+
 The simplest way to use this framework is to create a new instance of the full configured TCP based network stack:
 
 ``` go
@@ -96,9 +98,15 @@ The function NewNetworkConnectionTCP is a shorthand for the advanced configurati
 
 This code creates a new NetworkConnection that use tcp communication, a default PeerStore and some middlewares.  
 Outgoing messages will now pass the following middlewares:  
+``` 
 _msg_ -> Routing -> Headers -> Crypt -> Log -> _network_  
+``` 
+
 Incomming messages will pass the following middlewares  
+``` 
 _app logic_ <- Routing <- Headers <- Crypt <- Log <- _network_
+``` 
+
 
 
 
