@@ -31,7 +31,7 @@ func NewTCPOperator(network string, localAddr string) *OperatorTCP {
 	return o
 }
 
-// Dial connectes to the address by the given network
+// Dial connects to the address by the given network
 func (o *OperatorTCP) Dial(network string, addr string) error {
 	if network != "tcp" {
 		return ErrInvalidNetwork

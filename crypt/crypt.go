@@ -17,16 +17,20 @@ import (
 const encryptedPassLen = 256
 const nonceLen = 12
 
+// PubKey is a wrapper around an rsa.PublicKey
 type PubKey struct {
 	pub   *rsa.PublicKey
 	Bytes []byte
 }
+
+// PrivKey is a wrapper around an rsa.PrivateKey
 type PrivKey struct {
 	PubKey
 	priv  *rsa.PrivateKey
 	Bytes []byte
 }
 
+// Generate returns a new PrivKey
 func Generate() (*PrivKey, error) {
 	k, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -42,6 +46,7 @@ func Generate() (*PrivKey, error) {
 	return result, err
 }
 
+// PrivFromBytes retruns a PrivKey based on the provided bytes
 func PrivFromBytes(data []byte) (*PrivKey, error) {
 	k, err := x509.ParsePKCS1PrivateKey(data)
 	if err != nil {
@@ -54,6 +59,8 @@ func PrivFromBytes(data []byte) (*PrivKey, error) {
 	result.calcBytes()
 	return result, nil
 }
+
+// PubFromBytes returns a PubKey based on data
 func PubFromBytes(data []byte) (*PubKey, error) {
 	pub, err := x509.ParsePKIXPublicKey(data)
 	if err != nil {
@@ -71,18 +78,19 @@ func PubFromBytes(data []byte) (*PubKey, error) {
 	return result, err
 }
 
-func (self *PrivKey) calcBytes() {
-	result := x509.MarshalPKCS1PrivateKey(self.priv)
-	self.Bytes = result
+func (pk *PrivKey) calcBytes() {
+	result := x509.MarshalPKCS1PrivateKey(pk.priv)
+	pk.Bytes = result
 }
 
-func (priv *PrivKey) Decrypt(pub *PubKey, encryptedData []byte) ([]byte, error) {
+// Decrypt returns decrypted data that was encrypted with the given pub key
+func (pk *PrivKey) Decrypt(pub *PubKey, encryptedData []byte) ([]byte, error) {
 	if len(encryptedData) < encryptedPassLen {
 		return nil, errors.Errorf("unexpected data length, min: %d, current: %d", encryptedPassLen, len(encryptedData))
 	}
 
 	encryptedPass := encryptedData[:encryptedPassLen]
-	decryptedPass, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, priv.priv, encryptedPass, nil)
+	decryptedPass, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, pk.priv, encryptedPass, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed decrypt pass")
 	}
@@ -99,13 +107,13 @@ func (priv *PrivKey) Decrypt(pub *PubKey, encryptedData []byte) ([]byte, error) 
 	return decryptedData, err
 }
 
-func (self *PubKey) calcBytes() error {
-	result, err := x509.MarshalPKIXPublicKey(self.pub)
+func (pk *PubKey) calcBytes() error {
+	result, err := x509.MarshalPKIXPublicKey(pk.pub)
 	if err != nil {
 		return err
 	}
 
-	self.Bytes = result
+	pk.Bytes = result
 	return nil
 }
 
@@ -180,7 +188,9 @@ func genNonce() ([]byte, error) {
 	return nonce, nil
 }
 
-func (pub *PubKey) Encrypt(priv *PrivKey, decrypted []byte) ([]byte, error) {
+// Encrypt hash the data, encrypt the data with the hash, encrypt the hash with pk
+// and store the encrypted hash with the nonce within the data
+func (pk *PubKey) Encrypt(priv *PrivKey, decrypted []byte) ([]byte, error) {
 	hash, err := hash(decrypted)
 	if err != nil {
 		return nil, err
@@ -197,7 +207,7 @@ func (pub *PubKey) Encrypt(priv *PrivKey, decrypted []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	encryptedPass, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pub.pub, decryptedPass, nil)
+	encryptedPass, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pk.pub, decryptedPass, nil)
 	if err != nil {
 		return nil, err
 	}
