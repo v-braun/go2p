@@ -5,10 +5,13 @@ import (
 	"fmt"
 )
 
+// PipeOperation represents the pipe direction (Send or Receive)
 type PipeOperation int
 
 const (
-	Send    PipeOperation = iota
+	// Send represents an outgoing message pipe processing
+	Send PipeOperation = iota
+	// Receive represents an incoming message pipe processing
 	Receive PipeOperation = iota
 )
 
@@ -16,8 +19,10 @@ func (po PipeOperation) String() string {
 	return [...]string{"Send", "Receive"}[po]
 }
 
-var PipeStopProcessing = errors.New("pipe stopped")
+// ErrPipeStopProcessing is returned when the pipe has stopped it execution
+var ErrPipeStopProcessing = errors.New("pipe stopped")
 
+// Pipe handles the processing of an message
 type Pipe struct {
 	peer *Peer
 
@@ -57,7 +62,7 @@ func (p *Pipe) process(msg *Message) error {
 		if err != nil {
 			return err
 		} else if res == Stop {
-			return PipeStopProcessing
+			return ErrPipeStopProcessing
 		}
 
 		if p.op == Send {
@@ -71,6 +76,9 @@ func (p *Pipe) process(msg *Message) error {
 	return nil
 }
 
+// Send will send the provided message during the current pipe execution.
+//
+// The message goes only through middlewares that are after the current pipe position
 func (p *Pipe) Send(msg *Message) error {
 	pos := p.pos + 1
 	from := p.pos + 1
@@ -91,6 +99,10 @@ func (p *Pipe) Send(msg *Message) error {
 	return err
 }
 
+// Receive will block the current call until a message was read from the peer or
+// an error occurs.
+//
+// The message goes only through middlewares that are after the current pipe position
 func (p *Pipe) Receive() (*Message, error) {
 	msg, err := p.peer.io.receiveMsg()
 	if err == nil && msg == nil {
@@ -110,6 +122,7 @@ func (p *Pipe) Receive() (*Message, error) {
 	return msg, err
 }
 
+// Operation returns the current pipe operation (Send or Receive)
 func (p *Pipe) Operation() PipeOperation {
 	return p.op
 }

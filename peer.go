@@ -81,7 +81,7 @@ func (p *Peer) processPipe(m *Message, op PipeOperation) {
 	pipe := newPipe(p, p.middleware, op, pos, from, to)
 	err := pipe.process(m)
 
-	if err == PipeStopProcessing {
+	if err == ErrPipeStopProcessing {
 		return
 	}
 
@@ -116,14 +116,17 @@ func (p *Peer) stop() {
 	p.awaiter.AwaitSync()
 }
 
+// RemoteAddress returns the remote address of the current peer
 func (p *Peer) RemoteAddress() string {
 	return p.io.adapter.RemoteAddress()
 }
 
+// LocalAddress returns the local address of the current peer
 func (p *Peer) LocalAddress() string {
 	return p.io.adapter.LocalAddress()
 }
 
+// Metadata returns a map of metadata associated to this peer
 func (p *Peer) Metadata() maps.Map {
 	return p.metadata
 }

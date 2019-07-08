@@ -9,6 +9,7 @@ type adapterTCP struct {
 	conn net.Conn
 }
 
+// NewAdapter creates a new TCP adapter that wraps the given net.Conn instance
 func NewAdapter(conn net.Conn) Adapter {
 	a := new(adapterTCP)
 	a.conn = conn

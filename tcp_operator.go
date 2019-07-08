@@ -9,6 +9,9 @@ import (
 
 var _ PeerOperator = (*OperatorTCP)(nil)
 
+// OperatorTCP is an implementation of the PeerOperator inteface that handles
+// TCP based connections.
+// It use an net.Listener for incoming connections and and tcp.Dialer for outgoing.
 type OperatorTCP struct {
 	emitter *eventEmitter
 	server  net.Listener
@@ -19,7 +22,8 @@ type OperatorTCP struct {
 	localAddr   string
 }
 
-func NewTcpOperator(network string, localAddr string) *OperatorTCP {
+// NewTCPOperator creates a new TCP based PeerOperator instance
+func NewTCPOperator(network string, localAddr string) *OperatorTCP {
 	o := new(OperatorTCP)
 	o.emitter = newEventEmitter()
 	o.localNetwok = network
@@ -27,6 +31,7 @@ func NewTcpOperator(network string, localAddr string) *OperatorTCP {
 	return o
 }
 
+// Dial connectes to the address by the given network
 func (o *OperatorTCP) Dial(network string, addr string) error {
 	if network != "tcp" {
 		return ErrInvalidNetwork
@@ -42,18 +47,22 @@ func (o *OperatorTCP) Dial(network string, addr string) error {
 	return nil
 }
 
+// OnPeer registers the given handler and calls it when a new peer connection is
+// established
 func (o *OperatorTCP) OnPeer(handler func(p Adapter)) {
 	o.emitter.On("new-peer", func(args []interface{}) {
 		handler(args[0].(Adapter))
 	})
 }
 
+// OnError registers the given handler and calls it when a peer error occurs
 func (o *OperatorTCP) OnError(handler func(err error)) {
 	o.emitter.On("error", func(args []interface{}) {
 		handler(args[0].(error))
 	})
 }
 
+// Start will start the net.Listener and waits for incoming connections
 func (o *OperatorTCP) Start() error {
 	if o.localNetwok != "tcp" {
 		return ErrInvalidNetwork
@@ -71,6 +80,7 @@ func (o *OperatorTCP) Start() error {
 	return nil
 }
 
+// Stop will close the underlining net.Listener
 func (o *OperatorTCP) Stop() {
 	o.cancel()
 	o.server.Close()

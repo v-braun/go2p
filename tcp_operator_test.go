@@ -17,8 +17,8 @@ func TestPingPong(t *testing.T) {
 	msgWg := new(sync.WaitGroup)
 	msgWg.Add(2)
 
-	op1 := go2p.NewTcpOperator("tcp", "127.0.0.1:3377")
-	op2 := go2p.NewTcpOperator("tcp", "127.0.0.1:3378")
+	op1 := go2p.NewTCPOperator("tcp", "127.0.0.1:3377")
+	op2 := go2p.NewTCPOperator("tcp", "127.0.0.1:3378")
 
 	conn1 := go2p.NewNetworkConnection().
 		WithOperator(op1).

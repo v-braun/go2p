@@ -61,7 +61,7 @@ Routes, Headers, Crypt, Log
 
 */
 func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConnection {
-	op := NewTcpOperator("tcp", localAddr)
+	op := NewTCPOperator("tcp", localAddr)
 	peerStore := NewDefaultPeerStore(10)
 
 	conn := NewNetworkConnection().
