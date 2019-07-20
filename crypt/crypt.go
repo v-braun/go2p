@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/v-braun/must"
+
 	"github.com/pkg/errors"
 )
 
@@ -57,6 +59,8 @@ func PrivFromBytes(data []byte) (*PrivKey, error) {
 	result.priv = k
 	result.pub = &k.PublicKey
 	result.calcBytes()
+	result.PubKey.calcBytes()
+
 	return result, nil
 }
 
@@ -67,10 +71,7 @@ func PubFromBytes(data []byte) (*PubKey, error) {
 		return nil, err
 	}
 
-	key, ok := pub.(*rsa.PublicKey)
-	if !ok {
-		return nil, errors.New("could not read pub key from bytes")
-	}
+	key := pub.(*rsa.PublicKey)
 
 	result := &PubKey{}
 	result.pub = key
@@ -131,32 +132,26 @@ func (pk *PubKey) calcBytes() error {
 // 	return rsa.SignPKCS1v15(rand.Reader, priv.priv, crypto.SHA256, d)
 // }
 
-func hash(data []byte) ([]byte, error) {
+func hash(data []byte) []byte {
 	h := sha256.New()
 	_, err := h.Write(data)
-	if err != nil {
-		return nil, err
-	}
+	must.NoError(err, "could not write given data to hash")
 
 	d := h.Sum(nil)
 
-	return d, nil
+	return d
 }
 
-func enc(pass []byte, nonce []byte, data []byte) ([]byte, error) {
+func enc(pass []byte, nonce []byte, data []byte) []byte {
 	block, err := aes.NewCipher(pass)
-	if err != nil {
-		return nil, err
-	}
+	must.NoError(err, "unexpected error during create cipher")
 
 	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
+	must.NoError(err, "unexpected error during create gcm")
 
 	encryptedData := aead.Seal(nil, nonce, data, nil)
 
-	return encryptedData, nil
+	return encryptedData
 }
 
 func dec(pass []byte, nonce []byte, data []byte) ([]byte, error) {
@@ -178,34 +173,24 @@ func dec(pass []byte, nonce []byte, data []byte) ([]byte, error) {
 	return decryptedData, nil
 }
 
-func genNonce() ([]byte, error) {
+func genNonce() []byte {
 	nonce := make([]byte, nonceLen)
-	_, err := io.ReadFull(rand.Reader, nonce)
-	if err != nil {
-		return nil, err
-	}
 
-	return nonce, nil
+	_, err := io.ReadFull(rand.Reader, nonce)
+	must.NoError(err, "could not read random number")
+
+	return nonce
 }
 
 // Encrypt hash the data, encrypt the data with the hash, encrypt the hash with pk
 // and store the encrypted hash with the nonce within the data
 func (pk *PubKey) Encrypt(priv *PrivKey, decrypted []byte) ([]byte, error) {
-	hash, err := hash(decrypted)
-	if err != nil {
-		return nil, err
-	}
+	hash := hash(decrypted)
 
-	nonce, err := genNonce()
-	if err != nil {
-		return nil, err
-	}
+	nonce := genNonce()
 
 	decryptedPass := hash // use the hash of the msg as its pass
-	encryptedData, err := enc(decryptedPass, nonce, decrypted)
-	if err != nil {
-		return nil, err
-	}
+	encryptedData := enc(decryptedPass, nonce, decrypted)
 
 	encryptedPass, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pk.pub, decryptedPass, nil)
 	if err != nil {

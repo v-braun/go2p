@@ -16,7 +16,7 @@ type NetworkConnectionBuilder struct {
 // NewNetworkConnection creates a new NetworkBuilder instance to setup a new NetworkConnection
 func NewNetworkConnection() *NetworkConnectionBuilder {
 	b := new(NetworkConnectionBuilder)
-	b.peerStore = NewDefaultPeerStore(10)
+	b.peerStore = NewDefaultPeerStore(10, 10)
 
 	return b
 }
@@ -62,7 +62,7 @@ Routes, Headers, Crypt, Log
 */
 func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConnection {
 	op := NewTCPOperator("tcp", localAddr)
-	peerStore := NewDefaultPeerStore(10)
+	peerStore := NewDefaultPeerStore(10, 10)
 
 	conn := NewNetworkConnection().
 		WithOperator(op).

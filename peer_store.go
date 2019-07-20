@@ -24,22 +24,24 @@ type PeerStore interface {
 // DefaultPeerStore is a basic implementation of a PeerStore
 // It limits simultaneously connected peers to a configured capacity
 type DefaultPeerStore struct {
-	peers    []*Peer
-	mutex    *sync.Mutex
-	emitter  *eventEmitter
-	awaiter  awaiter.Awaiter
-	capacity int
+	peers            []*Peer
+	mutex            *sync.Mutex
+	emitter          *eventEmitter
+	awaiter          awaiter.Awaiter
+	capacity         int
+	capaCheckSeconds int64
 }
 
 // NewDefaultPeerStore creates a new basic PeerStore that limits
 // simultaneously connected peers by the provided capacity
-func NewDefaultPeerStore(capacity int) PeerStore {
+func NewDefaultPeerStore(capacity int, capaCheckSeconds int64) PeerStore {
 	ps := new(DefaultPeerStore)
 	ps.peers = make([]*Peer, 0)
 	ps.mutex = new(sync.Mutex)
 	ps.emitter = newEventEmitter()
 	ps.capacity = capacity
 	ps.awaiter = awaiter.New()
+	ps.capaCheckSeconds = capaCheckSeconds
 
 	return ps
 }
@@ -102,7 +104,7 @@ func (ps *DefaultPeerStore) IteratePeer(handler func(peer *Peer)) {
 // Start the background routines that monitors all connected peers
 func (ps *DefaultPeerStore) Start() {
 	ps.awaiter.Go(func() {
-		ticker := time.NewTicker(time.Second * 10)
+		ticker := time.NewTicker(time.Second * time.Duration(ps.capaCheckSeconds))
 		for {
 			select {
 			case <-ps.awaiter.CancelRequested():
