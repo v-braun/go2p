@@ -1,13 +1,15 @@
-package go2p_test
+package go2p
 
 import (
 	"fmt"
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/phayes/freeport"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/v-braun/go2p"
 )
 
 func getPorts(t *testing.T, amount int) []int {
@@ -21,11 +23,49 @@ func getPorts(t *testing.T, amount int) []int {
 	return result
 }
 
-func TestPingPong(t *testing.T) {
+func TestErrHandlingOnInvalidAdd(t *testing.T) {
+	store := new(MockPeerStore)
+	store.On("AddPeer", mock.Anything).Return(errors.New(""))
+	store.On("OnPeerAdd", mock.Anything)
+	store.On("OnPeerWantRemove", mock.Anything)
+	store.On("Start", mock.Anything)
+	store.On("Stop", mock.Anything)
+
+	ports := getPorts(t, 2)
+	addr1 := fmt.Sprintf("127.0.0.1:%d", ports[0])
+	op1 := NewTCPOperator("tcp", addr1)
+
+	addr2 := fmt.Sprintf("127.0.0.1:%d", ports[1])
+	op2 := NewTCPOperator("tcp", addr2)
+
+	net1 := NewNetworkConnection().
+		WithOperator(op1).
+		WithPeerStore(store).
+		Build()
+
+	net2 := NewNetworkConnection().
+		WithOperator(op2).
+		WithPeerStore(store).
+		Build()
+
+	wgTestDone := new(sync.WaitGroup)
+	wgTestDone.Add(1)
+	net2.OnPeerError(func(p *Peer, err error) {
+		wgTestDone.Done()
+	})
+
+	net1.Start()
+	net2.Start()
+
+	net1.ConnectTo("tcp", addr2)
+
+}
+
+func TestCapLimits(t *testing.T) {
 	type sut struct {
 		addr        string
-		net         *go2p.NetworkConnection
-		store       go2p.PeerStore
+		net         *NetworkConnection
+		store       PeerStore
 		connections int
 	}
 
@@ -34,10 +74,10 @@ func TestPingPong(t *testing.T) {
 	for _, p := range ports {
 		s := new(sut)
 		s.addr = fmt.Sprintf("127.0.0.1:%d", p)
-		s.store = go2p.NewDefaultPeerStore(1, 1)
-		op := go2p.NewTCPOperator("tcp", s.addr)
+		s.store = NewDefaultPeerStore(1, 1)
+		op := NewTCPOperator("tcp", s.addr)
 
-		s.net = go2p.NewNetworkConnection().
+		s.net = NewNetworkConnection().
 			WithOperator(op).
 			WithPeerStore(s.store).
 			Build()
@@ -49,14 +89,14 @@ func TestPingPong(t *testing.T) {
 	wgTestDone.Add(1)
 
 	peerDisconnected := false
-	suts[0].net.OnPeer(func(p *go2p.Peer) {
+	suts[0].net.OnPeer(func(p *Peer) {
 		suts[2].net.ConnectTo("tcp", suts[0].addr)
 	})
-	suts[0].net.OnPeerDisconnect(func(p *go2p.Peer) {
+	suts[0].net.OnPeerDisconnect(func(p *Peer) {
 		peerDisconnected = true
 	})
 
-	suts[0].store.OnPeerWantRemove(func(p *go2p.Peer) {
+	suts[0].store.OnPeerWantRemove(func(p *Peer) {
 		wgTestDone.Done()
 	})
 
