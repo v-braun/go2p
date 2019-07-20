@@ -7,8 +7,7 @@ import (
 )
 
 func TestPrivBytes(t *testing.T) {
-	k, err := Generate()
-	assert.NoError(t, err)
+	k := Generate()
 
 	privBytes := k.Bytes
 	pubBytes := k.PubKey.Bytes
@@ -30,8 +29,8 @@ func TestPrivBytesNegative(t *testing.T) {
 
 func TestDecryptNegative(t *testing.T) {
 	data := []byte{}
-	pk1, _ := Generate()
-	pk2, _ := Generate()
+	pk1 := Generate()
+	pk2 := Generate()
 
 	_, err := pk1.Decrypt(nil, data)
 	assert.Error(t, err)

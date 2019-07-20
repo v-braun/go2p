@@ -33,19 +33,18 @@ type PrivKey struct {
 }
 
 // Generate returns a new PrivKey
-func Generate() (*PrivKey, error) {
+func Generate() *PrivKey {
 	k, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		panic(err)
-	}
+	must.NoError(err, "could not generate keypair")
 
 	result := &PrivKey{}
 	result.priv = k
 	result.pub = &k.PublicKey
 	result.calcBytes()
 	err = result.PubKey.calcBytes()
+	must.NoError(err, "could not get bytes from pub key")
 
-	return result, err
+	return result
 }
 
 // PrivFromBytes retruns a PrivKey based on the provided bytes

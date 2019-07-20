@@ -16,10 +16,7 @@ const headerKeyPubKey = "middleware.crypt.pubkey"
 // This middleware handles encryption in your communication
 // PublicKeys are exchanged on first peer communication
 func Crypt() (string, MiddlewareFunc) {
-	key, err := crypt.Generate()
-	if err != nil {
-		panic(errors.Wrap(err, "failed gen key"))
-	}
+	key := crypt.Generate()
 
 	f := func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
 		op, err := middlewareCryptImpl(key, peer, pipe, msg)
