@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPrivBytes(t *testing.T) {
+func TestFromBytes(t *testing.T) {
 	k := Generate()
 
 	privBytes := k.Bytes
@@ -15,8 +15,12 @@ func TestPrivBytes(t *testing.T) {
 	k2, err := PrivFromBytes(privBytes)
 	assert.NoError(t, err)
 
+	pub2, err := PubFromBytes(pubBytes)
+	assert.NoError(t, err)
+
 	assert.EqualValues(t, privBytes, k2.Bytes)
 	assert.EqualValues(t, pubBytes, k2.PubKey.Bytes)
+	assert.EqualValues(t, pubBytes, pub2.Bytes)
 }
 
 func TestPrivBytesNegative(t *testing.T) {
