@@ -97,7 +97,9 @@ func TestChat(t *testing.T) {
 
 	conn1.net.OnPeer(func(p *go2p.Peer) {
 		fmt.Printf("%s got peer %s\n", p.LocalAddress(), p.RemoteAddress())
-		conn1.net.Send(go2p.NewMessageFromString(messages[0].in), p.RemoteAddress())
+		msg := go2p.NewMessage()
+		msg.PayloadSetString(messages[0].in)
+		conn1.net.Send(msg, p.RemoteAddress())
 	})
 
 	conn1.net.OnMessage(func(p *go2p.Peer, m *go2p.Message) {

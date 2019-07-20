@@ -7,6 +7,8 @@ import (
 	"net"
 	"strings"
 
+	"github.com/v-braun/go-must"
+
 	"github.com/google/uuid"
 
 	"github.com/emirpasic/gods/maps"
@@ -73,9 +75,7 @@ func (m *Message) ReadFromConn(c net.Conn) error {
 // ReadFromReader read all data from the given reader object into the payload
 // of the message instance
 func (m *Message) ReadFromReader(reader *bufio.Reader) error {
-	if reader == nil {
-		panic("reader cannot be nil")
-	}
+	must.ArgNotNil(reader, "reader")
 
 	sizeBuffer := make([]byte, 4)
 
@@ -105,9 +105,7 @@ func (m *Message) WriteIntoConn(c net.Conn) error {
 
 // WriteIntoWriter writes the message payload into the given writer instance
 func (m *Message) WriteIntoWriter(writer *bufio.Writer) error {
-	if writer == nil {
-		panic("writer cannot be nil")
-	}
+	must.ArgNotNil(writer, "writer")
 
 	payload := m.payload
 

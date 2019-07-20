@@ -44,7 +44,7 @@ func TestDecryptNegative(t *testing.T) {
 	assert.Error(t, err)
 
 	encryptedData, err := pk1.Encrypt(pk2, []byte("hello"))
-	encryptedData[len(encryptedData)-1] = 0
+	encryptedData[len(encryptedData)-1] = encryptedData[len(encryptedData)-1] + 1
 	_, err = pk1.Decrypt(&pk2.PubKey, encryptedData)
 	assert.Error(t, err)
 }
