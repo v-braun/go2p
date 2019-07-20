@@ -48,6 +48,38 @@ func TestErrHandlingOnInvalidAdd(t *testing.T) {
 		WithPeerStore(store).
 		Build()
 
+	net1.Start()
+	net2.Start()
+
+	net1.ConnectTo("tcp", addr2)
+
+}
+
+func TestPeerErrorHandling(t *testing.T) {
+	store1 := NewDefaultPeerStore(2, 2)
+	store2 := NewDefaultPeerStore(2, 2)
+
+	ports := getPorts(t, 2)
+	addr1 := fmt.Sprintf("127.0.0.1:%d", ports[0])
+	op1 := NewTCPOperator("tcp", addr1)
+
+	addr2 := fmt.Sprintf("127.0.0.1:%d", ports[1])
+	op2 := NewTCPOperator("tcp", addr2)
+
+	net1 := NewNetworkConnection().
+		WithOperator(op1).
+		WithPeerStore(store1).
+		Build()
+
+	net2 := NewNetworkConnection().
+		WithOperator(op2).
+		WithPeerStore(store2).
+		Build()
+
+	net2.OnPeer(func(p *Peer) {
+		p.emitter.EmitAsync("error", p, errors.New("fail"))
+	})
+
 	wgTestDone := new(sync.WaitGroup)
 	wgTestDone.Add(1)
 	net2.OnPeerError(func(p *Peer, err error) {
@@ -58,6 +90,8 @@ func TestErrHandlingOnInvalidAdd(t *testing.T) {
 	net2.Start()
 
 	net1.ConnectTo("tcp", addr2)
+
+	wgTestDone.Wait()
 
 }
 

@@ -140,7 +140,7 @@ func (nc *NetworkConnection) Start() error {
 			p := newPeer(a, nc.middlewares)
 			err := nc.peerStore.AddPeer(p)
 			if err != nil {
-				p.emitter.EmitAsync("error", errors.Wrapf(err, "could not add peer: %s", p.RemoteAddress()))
+				p.emitter.EmitAsync("error", p, errors.Wrapf(err, "could not add peer: %s", p.RemoteAddress()))
 				return
 			}
 
