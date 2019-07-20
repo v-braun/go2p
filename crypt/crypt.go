@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/v-braun/must"
+	"github.com/v-braun/go-must"
 
 	"github.com/pkg/errors"
 )
