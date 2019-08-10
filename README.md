@@ -44,7 +44,7 @@ go get github.com/v-braun/go2p
 
 ## Usage
 
-> You like code? Checkout the [chat example](https://github.com/v-braun/go2p/blob/master/examples/chat/main.go)
+> You like code? Checkout the [chat example](https://github.com/v-braun/go2p/blob/master/example_test.go)
 
 The simplest way to use this framework is to create a new instance of the full configured TCP based network stack:
 
