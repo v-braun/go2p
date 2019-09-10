@@ -256,8 +256,11 @@ func TestDisconnect(t *testing.T) {
 
 	peerConnectedWg := sync.WaitGroup{}
 	peerConnectedWg.Add(2)
+
+	var conn2Peer *go2p.Peer = nil
 	conn1.net.OnPeer(func(peer *go2p.Peer) {
 		peerConnectedWg.Done()
+		conn2Peer = peer
 	})
 
 	conn2.net.OnPeer(func(peer *go2p.Peer) {
@@ -278,7 +281,8 @@ func TestDisconnect(t *testing.T) {
 		testDone.Done()
 	})
 
-	conn2.net.Stop()
+	conn1.net.DisconnectFrom(conn2Peer.RemoteAddress())
+	// conn2.net.Stop()
 
 	testDone.Wait()
 
