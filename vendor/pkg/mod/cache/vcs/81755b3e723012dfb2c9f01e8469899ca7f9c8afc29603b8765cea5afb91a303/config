@@ -1,8 +1,0 @@
-[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = true
-	precomposeunicode = true
-[remote "origin"]
-	url = https://github.com/v-braun/awaiter
-	fetch = +refs/heads/*:refs/remotes/origin/*
