@@ -10,7 +10,6 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	mock "github.com/stretchr/testify/mock"
 	"github.com/v-braun/go2p"
 )
 
@@ -211,7 +210,6 @@ func TestRouting(t *testing.T) {
 }
 
 func TestLargeMessages(t *testing.T) {
-
 	var conn1 *networkConnWithAddress
 	var conn2 *networkConnWithAddress
 	largeMsg := genLargeMessage(256)
@@ -249,6 +247,45 @@ func TestLargeMessages(t *testing.T) {
 	conn2.net.Stop()
 }
 
+func TestDisconnect(t *testing.T) {
+
+	var conn1 *networkConnWithAddress
+	var conn2 *networkConnWithAddress
+
+	conn1, conn2 = createTestNetworks(t, &map[string]func(peer *go2p.Peer, msg *go2p.Message){})
+
+	peerConnectedWg := sync.WaitGroup{}
+	peerConnectedWg.Add(2)
+	conn1.net.OnPeer(func(peer *go2p.Peer) {
+		peerConnectedWg.Done()
+	})
+
+	conn2.net.OnPeer(func(peer *go2p.Peer) {
+		peerConnectedWg.Done()
+	})
+
+	registerPeerErrorHandlers(t, conn1.net, conn2.net)
+	if !startNetworks(t, conn1.net, conn2.net) {
+		return
+	}
+
+	conn1.net.ConnectTo("tcp", conn2.addr)
+	peerConnectedWg.Wait()
+
+	testDone := sync.WaitGroup{}
+	testDone.Add(1)
+	conn1.net.OnPeerDisconnect(func(peer *go2p.Peer) {
+		testDone.Done()
+	})
+
+	conn2.net.Stop()
+
+	testDone.Wait()
+
+	conn1.net.Stop()
+
+}
+
 func genLargeMessage(chars int) string {
 	charset := "abcdefghijklmnopqrstuvwxyz" +
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -259,45 +296,4 @@ func genLargeMessage(chars int) string {
 		b[i] = charset[rnd.Intn(len(charset))]
 	}
 	return string(b)
-}
-
-func getPorts(t *testing.T, amount int) []int {
-	var result []int
-	for i := 0; i < amount; i++ {
-		p, err := freeport.GetFreePort()
-		assert.NoError(t, err)
-		result = append(result, p)
-	}
-
-	return result
-}
-
-func TestErrHandlingOnInvalidAdd(t *testing.T) {
-	store := new(go2p.MockPeerStore)
-	store.On("AddPeer", mock.Anything).Return(errors.New(""))
-	store.On("OnPeerAdd", mock.Anything)
-	store.On("OnPeerWantRemove", mock.Anything)
-	store.On("Start", mock.Anything)
-	store.On("Stop", mock.Anything)
-
-	ports := getPorts(t, 2)
-	addr1 := fmt.Sprintf("127.0.0.1:%d", ports[0])
-	op1 := go2p.NewTCPOperator("tcp", addr1)
-
-	addr2 := fmt.Sprintf("127.0.0.1:%d", ports[1])
-	op2 := go2p.NewTCPOperator("tcp", addr2)
-
-	net1 := go2p.NewNetworkConnection().
-		WithOperator(op1).
-		Build()
-
-	net2 := go2p.NewNetworkConnection().
-		WithOperator(op2).
-		Build()
-
-	net1.Start()
-	net2.Start()
-
-	net1.ConnectTo("tcp", addr2)
-
 }
