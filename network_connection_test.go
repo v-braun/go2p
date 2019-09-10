@@ -282,7 +282,6 @@ func TestDisconnect(t *testing.T) {
 	})
 
 	conn1.net.DisconnectFrom(conn2Peer.RemoteAddress())
-	// conn2.net.Stop()
 
 	testDone.Wait()
 
