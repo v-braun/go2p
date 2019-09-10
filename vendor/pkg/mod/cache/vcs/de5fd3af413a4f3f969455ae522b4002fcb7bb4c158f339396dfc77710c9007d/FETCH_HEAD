@@ -1,0 +1,4 @@
+094676da4a83be5288d281081bba63a173ce6772		branch 'master' of https://go.googlesource.com/crypto
+56440b844dfe139a8ac053f4ecac0b20b79058f4		branch 'release-branch.go1.11' of https://go.googlesource.com/crypto
+e84da0312774c21d64ee2317962ef669b27ffb41		branch 'release-branch.go1.12' of https://go.googlesource.com/crypto
+60c769a6c58655dab1b9adac0d58967dd517cfba		branch 'release-branch.go1.13' of https://go.googlesource.com/crypto

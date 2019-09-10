@@ -19,7 +19,7 @@ type Peer struct {
 
 func newPeer(adapter Adapter, middleware middlewares) *Peer {
 	p := new(Peer)
-	p.send = make(chan *Message)
+	p.send = make(chan *Message, 10)
 	p.io = newAdapterIO(adapter)
 	p.awaiter = awaiter.New()
 	p.middleware = middleware
@@ -52,7 +52,6 @@ func (p *Peer) start() <-chan struct{} {
 				continue
 			case <-p.awaiter.CancelRequested():
 				return
-
 			}
 		}
 	})

@@ -1,56 +1,8 @@
 package go2p
 
 import (
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-// NetworkConnectionBuilder provides a fluent interface to
-// create a NetworkConnection
-type NetworkConnectionBuilder struct {
-	middlewares []*Middleware
-	operators   []PeerOperator
-	peerStore   PeerStore
-}
-
-// NewNetworkConnection creates a new NetworkBuilder instance to setup a new NetworkConnection
-func NewNetworkConnection() *NetworkConnectionBuilder {
-	b := new(NetworkConnectionBuilder)
-	b.peerStore = NewDefaultPeerStore(10, 10)
-
-	return b
-}
-
-// WithMiddleware attach a new Middleware to the NetworkConnection setup
-func (b *NetworkConnectionBuilder) WithMiddleware(name string, impl MiddlewareFunc) *NetworkConnectionBuilder {
-	m := NewMiddleware(name, impl)
-	b.middlewares = append(b.middlewares, m)
-	return b
-}
-
-// WithOperator attach a new PeerOperator to the NetworkConnection setup
-func (b *NetworkConnectionBuilder) WithOperator(op PeerOperator) *NetworkConnectionBuilder {
-	b.operators = append(b.operators, op)
-	return b
-}
-
-// WithPeerStore attach a new PeerStore to the NetworkConnection
-func (b *NetworkConnectionBuilder) WithPeerStore(ps PeerStore) *NetworkConnectionBuilder {
-	b.peerStore = ps
-	return b
-}
-
-// Build finalize the NetworkConnection setup and creates the new instance
-func (b *NetworkConnectionBuilder) Build() *NetworkConnection {
-	nc := new(NetworkConnection)
-	nc.middlewares = newMiddlewares(b.middlewares...)
-	nc.operators = b.operators
-	nc.emitter = newEventEmitter()
-	nc.peerStore = b.peerStore
-	nc.log = newLogger("network-connection")
-
-	return nc
-}
 
 /*
 NewNetworkConnectionTCP provides a full configured TCP based network
@@ -62,11 +14,9 @@ Routes, Headers, Crypt, Log
 */
 func NewNetworkConnectionTCP(localAddr string, routes RoutingTable) *NetworkConnection {
 	op := NewTCPOperator("tcp", localAddr)
-	peerStore := NewDefaultPeerStore(10, 10)
 
 	conn := NewNetworkConnection().
 		WithOperator(op).
-		WithPeerStore(peerStore).
 		WithMiddleware(Routes(routes)).
 		WithMiddleware(Headers()).
 		WithMiddleware(Crypt()).
@@ -81,13 +31,13 @@ type NetworkConnection struct {
 	middlewares middlewares
 	operators   []PeerOperator
 	emitter     *eventEmitter
-	peerStore   PeerStore
 	log         *logrus.Entry
+	peers       *peers
 }
 
 // Send will send the provided message to the given address
 func (nc *NetworkConnection) Send(msg *Message, addr string) {
-	nc.peerStore.LockPeer(addr, func(peer *Peer) {
+	nc.peers.lock(addr, func(peer *Peer) {
 		nc.log.WithFields(logrus.Fields{
 			"local":  peer.LocalAddress(),
 			"remote": peer.RemoteAddress(),
@@ -100,7 +50,7 @@ func (nc *NetworkConnection) Send(msg *Message, addr string) {
 
 // SendBroadcast will send the given message to all peers
 func (nc *NetworkConnection) SendBroadcast(msg *Message) {
-	nc.peerStore.IteratePeer(func(peer *Peer) {
+	nc.peers.iteratePeer(func(peer *Peer) {
 		nc.log.WithFields(logrus.Fields{
 			"local":  peer.LocalAddress(),
 			"remote": peer.RemoteAddress(),
@@ -123,26 +73,37 @@ func (nc *NetworkConnection) ConnectTo(network string, addr string) {
 	}
 }
 
+// DisconnectFrom will disconnects the given peer
+func (nc *NetworkConnection) DisconnectFrom(addr string) {
+	nc.peers.lock(addr, func(peer *Peer) {
+		nc.log.WithFields(logrus.Fields{
+			"local":  peer.LocalAddress(),
+			"remote": peer.RemoteAddress(),
+		}).Debug("disconnect")
+
+		peer.stop()
+		go func(n *NetworkConnection, p *Peer) {
+			n.peers.rm(p)
+		}(nc, peer)
+	})
+}
+
 // Start will start up the p2p network stack
 func (nc *NetworkConnection) Start() error {
 	nc.log.Debug("start network")
 
-	nc.peerStore.OnPeerAdd(func(peer *Peer) {
-		nc.emitter.EmitAsync("peer-new", peer)
-	})
-	nc.peerStore.OnPeerWantRemove(func(peer *Peer) {
-		peer.stop()
-		nc.peerStore.RemovePeer(peer)
-	})
+	// nc.peerStore.OnPeerAdd(func(peer *Peer) {
+	// 	nc.emitter.EmitAsync("peer-new", peer)
+	// })
+	// nc.peerStore.OnPeerWantRemove(func(peer *Peer) {
+	// 	peer.stop()
+	// 	nc.peerStore.RemovePeer(peer)
+	// })
 
 	for _, op := range nc.operators {
 		op.OnPeer(func(a Adapter) {
 			p := newPeer(a, nc.middlewares)
-			err := nc.peerStore.AddPeer(p)
-			if err != nil {
-				p.emitter.EmitAsync("error", p, errors.Wrapf(err, "could not add peer: %s", p.RemoteAddress()))
-				return
-			}
+			nc.peers.add(p)
 
 			p.emitter.On("message", func(args []interface{}) {
 				nc.emitter.EmitAsync("peer-message", args...)
@@ -150,20 +111,20 @@ func (nc *NetworkConnection) Start() error {
 			p.emitter.On("disconnect", func(args []interface{}) {
 				p := args[0].(*Peer)
 				p.stop()
-				nc.peerStore.RemovePeer(p)
+				nc.peers.rm(p)
 				nc.emitter.EmitAsync("peer-disconnect", p)
 			})
 			p.emitter.On("error", func(args []interface{}) {
 				p := args[0].(*Peer)
 				err := args[1].(error)
 				p.stop()
-				nc.peerStore.RemovePeer(p)
+				nc.peers.rm(p)
 				nc.emitter.EmitAsync("peer-error", p, err)
 			})
 
 			<-p.start()
 
-			nc.emitter.EmitAsync("new-peer", p)
+			nc.emitter.EmitAsync("peer-connect", p)
 		})
 
 		err := op.Start()
@@ -172,14 +133,12 @@ func (nc *NetworkConnection) Start() error {
 		}
 	}
 
-	nc.peerStore.Start()
-
 	return nil
 }
 
 // OnPeer registers the provided handler and call it when a new peer connection is created
 func (nc *NetworkConnection) OnPeer(handler func(p *Peer)) {
-	nc.emitter.On("new-peer", func(args []interface{}) {
+	nc.emitter.On("peer-connect", func(args []interface{}) {
 		handler(args[0].(*Peer))
 	})
 }
@@ -213,11 +172,8 @@ func (nc *NetworkConnection) Stop() {
 		op.Stop()
 	}
 
-	nc.peerStore.IteratePeer(func(p *Peer) {
-		nc.peerStore.RemovePeer(p)
+	nc.peers.iteratePeer(func(p *Peer) {
+		nc.peers.rm(p)
 		p.stop()
-
 	})
-
-	nc.peerStore.Stop()
 }

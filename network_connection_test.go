@@ -10,6 +10,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	mock "github.com/stretchr/testify/mock"
 	"github.com/v-braun/go2p"
 )
 
@@ -258,4 +259,45 @@ func genLargeMessage(chars int) string {
 		b[i] = charset[rnd.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+func getPorts(t *testing.T, amount int) []int {
+	var result []int
+	for i := 0; i < amount; i++ {
+		p, err := freeport.GetFreePort()
+		assert.NoError(t, err)
+		result = append(result, p)
+	}
+
+	return result
+}
+
+func TestErrHandlingOnInvalidAdd(t *testing.T) {
+	store := new(go2p.MockPeerStore)
+	store.On("AddPeer", mock.Anything).Return(errors.New(""))
+	store.On("OnPeerAdd", mock.Anything)
+	store.On("OnPeerWantRemove", mock.Anything)
+	store.On("Start", mock.Anything)
+	store.On("Stop", mock.Anything)
+
+	ports := getPorts(t, 2)
+	addr1 := fmt.Sprintf("127.0.0.1:%d", ports[0])
+	op1 := go2p.NewTCPOperator("tcp", addr1)
+
+	addr2 := fmt.Sprintf("127.0.0.1:%d", ports[1])
+	op2 := go2p.NewTCPOperator("tcp", addr2)
+
+	net1 := go2p.NewNetworkConnection().
+		WithOperator(op1).
+		Build()
+
+	net2 := go2p.NewNetworkConnection().
+		WithOperator(op2).
+		Build()
+
+	net1.Start()
+	net2.Start()
+
+	net1.ConnectTo("tcp", addr2)
+
 }
