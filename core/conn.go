@@ -1,19 +1,12 @@
-package go2p
+package core
 
-type errorConstant string
-
-func (e errorConstant) Error() string { return string(e) }
-
-// DisconnectedError represents Error when a peer is disconnected
-const DisconnectedError = errorConstant("disconnected")
-
-// Adapter represents a wrapper around a network connection
-type Adapter interface {
+// Conn represents a wrapper around a network connection
+type Conn interface {
 
 	// ReadMessage should read from the underline connection
 	// and return a Message object until all data was readed
 	// The call should block until an entire Message was readed,
-	// an error occoured or the underline connection was closed
+	// an error occurred or the underline connection was closed
 	ReadMessage() (*Message, error)
 
 	// WriteMessage write the given message to the underline connection

@@ -1,21 +1,18 @@
-package go2p
+package core
 
-import "errors"
-
-// ErrInvalidNetwork represents an invalid network part in the given address
-var ErrInvalidNetwork = errors.New("invalid network")
-
-// PeerOperator connect peers to the current network connection
+// Operator connect peers to the current network connection
 // I provides functionalities for dialing (active connection)
 // and listening (passive connections) over a protocol (tcp/udp/etc)
-type PeerOperator interface {
+type Operator interface {
 
 	// Dial connects to the given address by the given network
 	Dial(network string, addr string) error
 
 	// OnPeer registers a handler function that should be called
 	// when a new peer connection is established
-	OnPeer(handler func(p Adapter))
+	OnPeer(handler func(p Conn))
+
+	OnError(handler func(err error))
 
 	// Start the background listening jobs for the operator
 	Start() error

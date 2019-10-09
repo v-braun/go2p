@@ -1,4 +1,4 @@
-package go2p
+package core
 
 import (
 	"bufio"
@@ -57,6 +57,18 @@ func NewMessage() *Message {
 	m.metadata = hashmap.New()
 	m.localID = uuid.New().String()
 	return m
+}
+
+func (m *Message) Clone() *Message {
+	msg := NewMessageFromData(m.payload)
+	msg.localID = m.localID
+	msg.metadata = hashmap.New()
+	for _, k := range m.metadata.Keys() {
+		v, _ := m.metadata.Get(k)
+		msg.metadata.Put(k, v)
+	}
+
+	return msg
 }
 
 // Metadata returns a map of metadata assigned to this message

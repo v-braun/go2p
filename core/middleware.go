@@ -1,4 +1,4 @@
-package go2p
+package core
 
 import (
 	"fmt"

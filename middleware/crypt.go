@@ -1,9 +1,10 @@
-package go2p
+package middleware
 
 import (
 	"bytes"
 
 	"github.com/pkg/errors"
+	"github.com/v-braun/go2p/core"
 	"github.com/v-braun/go2p/crypt"
 )
 
@@ -15,55 +16,56 @@ const headerKeyPubKey = "middleware.crypt.pubkey"
 // Crypt returns the crypto middleware.
 // This middleware handles encryption in your communication
 // PublicKeys are exchanged on first peer communication
-func Crypt() (string, MiddlewareFunc) {
+func Crypt() *core.Middleware {
 	key := crypt.Generate()
 
-	f := func(peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+	f := func(peer *core.Peer, pipe *core.Pipe, msg *core.Message) (core.MiddlewareResult, error) {
 		op, err := middlewareCryptImpl(key, peer, pipe, msg)
 		return op, err
 	}
 
-	return "Crypt", f
+	result := core.NewMiddleware("Crypt", f)
+	return result
 }
 
-func middlewareCryptImpl(myKey *crypt.PrivKey, peer *Peer, pipe *Pipe, msg *Message) (MiddlewareResult, error) {
+func middlewareCryptImpl(myKey *crypt.PrivKey, peer *core.Peer, pipe *core.Pipe, msg *core.Message) (core.MiddlewareResult, error) {
 
 	if isHandshakeDone(peer, pipe) {
 		// handshake done, just handle the message
 		err := messageHandle(peer, pipe, msg, myKey)
 		if err != nil {
-			return Stop, err
+			return core.Stop, err
 		}
 
-		return Next, err
+		return core.Next, err
 	}
 
 	// no pub-key from remote, handle handshake
-	if pipe.Operation() == Receive {
+	if pipe.Operation() == core.Receive {
 		// passive mode:
 		// the remote send us the pub key
 		// so the received message should be a handshake message
 		err := handshakePassive(peer, pipe, msg, myKey)
-		return Stop, err
+		return core.Stop, err
 	}
 
 	// active mode:
 	// the active message should be postpone after the key exchange
 	err := handshakeActive(peer, pipe, myKey)
 	if err != nil {
-		return Stop, err
+		return core.Stop, err
 	}
 
 	// handshake done, just handle the active message
 	err = messageHandle(peer, pipe, msg, myKey)
-	return Next, err
+	return core.Next, err
 }
 
-func messageHandle(peer *Peer, pipe *Pipe, msg *Message, myKey *crypt.PrivKey) error {
+func messageHandle(peer *core.Peer, pipe *core.Pipe, msg *core.Message, myKey *crypt.PrivKey) error {
 	key, _ := peer.Metadata().Get(headerKeyPubKey)
 	theirKey := key.(*crypt.PubKey)
 
-	if pipe.Operation() == Send {
+	if pipe.Operation() == core.Send {
 		err := encrypt(msg, theirKey, myKey)
 		return err
 	}
@@ -72,7 +74,7 @@ func messageHandle(peer *Peer, pipe *Pipe, msg *Message, myKey *crypt.PrivKey) e
 	return err
 }
 
-func encrypt(msg *Message, theirKey *crypt.PubKey, myKey *crypt.PrivKey) error {
+func encrypt(msg *core.Message, theirKey *crypt.PubKey, myKey *crypt.PrivKey) error {
 	content := msg.PayloadGet()
 	contentEnc, err := theirKey.Encrypt(myKey, content)
 	if err != nil {
@@ -84,7 +86,7 @@ func encrypt(msg *Message, theirKey *crypt.PubKey, myKey *crypt.PrivKey) error {
 	return nil
 }
 
-func decrypt(msg *Message, myKey *crypt.PrivKey, theirKey *crypt.PubKey) error {
+func decrypt(msg *core.Message, myKey *crypt.PrivKey, theirKey *crypt.PubKey) error {
 	content := msg.PayloadGet()
 	contentLen := len(content)
 	content, err := myKey.Decrypt(theirKey, content)
@@ -98,12 +100,12 @@ func decrypt(msg *Message, myKey *crypt.PrivKey, theirKey *crypt.PubKey) error {
 }
 
 // handshake methods
-func isHandshakeDone(peer *Peer, pipe *Pipe) bool {
+func isHandshakeDone(peer *core.Peer, pipe *core.Pipe) bool {
 	_, found := peer.Metadata().Get(headerKeyPubKey)
 	return found
 }
 
-func isHandshakeMsg(msg *Message) bool {
+func isHandshakeMsg(msg *core.Message) bool {
 	content := msg.PayloadGet()
 	if len(content) < len(prefixHandshake) {
 		return false
@@ -115,17 +117,16 @@ func isHandshakeMsg(msg *Message) bool {
 	return equal
 }
 
-func handshakePassive(peer *Peer, pipe *Pipe, msg *Message, myKey *crypt.PrivKey) error {
+func handshakePassive(peer *core.Peer, pipe *core.Pipe, msg *core.Message, myKey *crypt.PrivKey) error {
 	if err := handshakeHandleResponse(peer, pipe, msg); err != nil {
-		errors.Wrapf(err, "received message from peer without a handshake | peer: %s", peer.RemoteAddress())
-		return err
+		return errors.Wrapf(err, "received message from peer without a handshake | peer: %s", peer.RemoteAddress())
 	}
 
 	err := handshakeSend(pipe, myKey)
 	return err
 }
 
-func handshakeActive(peer *Peer, pipe *Pipe, myKey *crypt.PrivKey) error {
+func handshakeActive(peer *core.Peer, pipe *core.Pipe, myKey *crypt.PrivKey) error {
 	if err := handshakeSend(pipe, myKey); err != nil {
 		return err
 	}
@@ -139,8 +140,8 @@ func handshakeActive(peer *Peer, pipe *Pipe, myKey *crypt.PrivKey) error {
 	return err
 }
 
-func handshakeSend(pipe *Pipe, myKey *crypt.PrivKey) error {
-	rq := NewMessage()
+func handshakeSend(pipe *core.Pipe, myKey *crypt.PrivKey) error {
+	rq := core.NewMessage()
 
 	content := append(prefixHandshake, myKey.PubKey.Bytes...)
 	rq.PayloadSet(content)
@@ -148,7 +149,7 @@ func handshakeSend(pipe *Pipe, myKey *crypt.PrivKey) error {
 	return err
 }
 
-func handshakeHandleResponse(peer *Peer, pipe *Pipe, msg *Message) error {
+func handshakeHandleResponse(peer *core.Peer, pipe *core.Pipe, msg *core.Message) error {
 	if !isHandshakeMsg(msg) {
 		return errors.Errorf("invalid handshake message | peer: %s", peer.RemoteAddress())
 	}

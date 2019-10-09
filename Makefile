@@ -102,4 +102,6 @@ go-clean:
 	@echo "  🗑  Cleaning build cache"
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go clean
 
-
+go-generate-mocks:
+	@mockgen -source=./core/operator.go  -destination=./mock_core/operator_mocks_test.go -package=core_test Operator
+	# @mockgen -source=./core/conn.go -destination=./mock_core/conn_mocks_test.go Conn 

@@ -1,9 +1,7 @@
-package go2p
+package core
 
 import (
-	"errors"
-
-	"github.com/sirupsen/logrus"
+	"github.com/v-braun/go2p/core/logging"
 )
 
 // PipeOperation represents the pipe direction (Send or Receive)
@@ -20,9 +18,6 @@ func (po PipeOperation) String() string {
 	return [...]string{"Send", "Receive"}[po]
 }
 
-// ErrPipeStopProcessing is returned when the pipe has stopped it execution
-var ErrPipeStopProcessing = errors.New("pipe stopped")
-
 // Pipe handles the processing of an message
 type Pipe struct {
 	peer *Peer
@@ -33,7 +28,7 @@ type Pipe struct {
 
 	pos int // instruction pointer
 
-	log *logrus.Entry
+	log *logging.Logger
 }
 
 func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int, fromPos int, toPos int) *Pipe {
@@ -43,7 +38,7 @@ func newPipe(peer *Peer, allActions middlewares, op PipeOperation, pos int, from
 	p.pos = pos
 	p.allActions = allActions
 	p.executingActions = allActions[fromPos:toPos]
-	p.log = newLogger("pipe")
+	p.log = logging.NewLogger("pipe")
 
 	p.peer = peer
 
@@ -53,21 +48,21 @@ func (p *Pipe) process(msg *Message) error {
 	nextItems := p.executingActions.nextItems(p.op)
 
 	for _, m := range nextItems {
-		p.log.WithFields(logrus.Fields{
+		p.log.Debug(logging.Fields{
 			"name":    m.name,
 			"pos":     m.pos,
 			"msg-len": len(msg.PayloadGet()),
 			"op":      p.op.String(),
-		}).Debug("execute middleware")
+		}, "execute middleware")
 
 		res, err := m.execute(p.peer, p, msg)
 		if err != nil {
-			p.log.WithFields(logrus.Fields{
+			p.log.Error(logging.Fields{
 				"name":    m.name,
 				"pos":     m.pos,
 				"msg-len": len(msg.PayloadGet()),
 				"err":     err,
-			}).Error("middleware error")
+			}, "middleware error")
 			return err
 		} else if res == Stop {
 			return ErrPipeStopProcessing
@@ -93,7 +88,7 @@ func (p *Pipe) Send(msg *Message) error {
 	to := len(p.allActions)
 
 	if pos > to {
-		err := p.peer.io.sendMsg(msg)
+		err := p.peer.conn.sendMsg(msg)
 		return err
 	}
 
@@ -103,7 +98,7 @@ func (p *Pipe) Send(msg *Message) error {
 		return err
 	}
 
-	err := p.peer.io.sendMsg(msg)
+	err := p.peer.conn.sendMsg(msg)
 	return err
 }
 
@@ -112,7 +107,7 @@ func (p *Pipe) Send(msg *Message) error {
 //
 // The message goes only through middlewares that are after the current pipe position
 func (p *Pipe) Receive() (*Message, error) {
-	msg, err := p.peer.io.receiveMsg()
+	msg, err := p.peer.conn.receiveMsg()
 	if err == nil && msg == nil {
 		panic("unexpected nil result from peer.receive")
 	} else if err != nil {
