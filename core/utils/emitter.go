@@ -22,3 +22,7 @@ func (em *EventEmitter) Emit(topic string, args ...interface{}) {
 func (em *EventEmitter) On(topic string, handler interface{}) {
 	em.emitter.On(topic, handler)
 }
+
+func (em *EventEmitter) Once(topic string, handler interface{}) {
+	em.emitter.Once(topic, handler)
+}

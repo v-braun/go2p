@@ -29,9 +29,16 @@ func NewNetwork() *Network {
 	return result
 }
 
-func (nc *Network) UseMiddleware(middleware *Middleware) *Network {
+func (nc *Network) AppendMiddleware(middleware *Middleware) *Network {
 	nc.ensureStarted(false)
 	middlewares := append(nc.middlewares, middleware)
+	nc.middlewares = newMiddlewares(middlewares...)
+	return nc
+}
+
+func (nc *Network) PrependMiddleware(middleware *Middleware) *Network {
+	nc.ensureStarted(false)
+	middlewares := append([]*Middleware{middleware}, nc.middlewares...)
 	nc.middlewares = newMiddlewares(middlewares...)
 	return nc
 }
@@ -55,6 +62,14 @@ func (nc *Network) Send(msg *Message, addr string) {
 			"len":    len(msg.PayloadGet()),
 		}, "send messag")
 		peer.send <- msg
+	}
+}
+
+func (nc *Network) SetMiddlewareEnabled(name string, enabled bool) {
+	for _, m := range nc.middlewares {
+		if m.name == name {
+			m.enabled = enabled
+		}
 	}
 }
 
@@ -124,16 +139,29 @@ func (nc *Network) Start() error {
 			nc.peers.add(p)
 
 			p.emitter.On("message", func(p *Peer, m *Message) {
+				nc.log.Debug(logging.Fields{
+					"remote": p.RemoteAddress(),
+					"local":  p.LocalAddress(),
+				}, "peer disconnect")
+
 				nc.emitter.Emit("peer-message", p, m)
 			})
-			p.emitter.On("disconnect", func(p *Peer) {
-				p.stop()
+			p.emitter.Once("disconnect", func(p *Peer) {
+				nc.log.Info(logging.Fields{
+					"remote": p.RemoteAddress(),
+					"local":  p.LocalAddress(),
+				}, "peer disconnect")
+
 				nc.peers.rm(p)
 				nc.emitter.Emit("peer-disconnect", p)
 			})
-			p.emitter.On("error", func(p *Peer, err error) {
-				p.stop()
-				nc.peers.rm(p)
+			p.emitter.Once("error", func(p *Peer, err error) {
+				nc.log.Error(logging.Fields{
+					"remote": p.RemoteAddress(),
+					"local":  p.LocalAddress(),
+					"err":    err.Error(),
+				}, "peer error")
+
 				nc.emitter.Emit("peer-error", p, err)
 			})
 

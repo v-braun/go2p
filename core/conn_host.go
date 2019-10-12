@@ -74,11 +74,11 @@ func isDisconnectErr(err error) bool {
 }
 func (host *connHost) handleError(err error, src string) {
 	if isDisconnectErr(err) {
-		host.emitter.Emit("disconnect")
+		go host.emitter.Emit("disconnect")
 		return
 	}
 
-	host.emitter.Emit("error", errors.Wrapf(err, "error during %s", src))
+	go host.emitter.Emit("error", errors.Wrapf(err, "error during %s", src))
 }
 
 func (host *connHost) sendMsg(m *Message) error {

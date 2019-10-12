@@ -26,6 +26,7 @@ type Middleware struct {
 	execute MiddlewareFunc
 	name    string
 	pos     int
+	enabled bool
 }
 
 // NewMiddleware wraps the provided action into a Middleware instance
@@ -33,6 +34,7 @@ func NewMiddleware(name string, action MiddlewareFunc) *Middleware {
 	return &Middleware{
 		name:    name,
 		execute: action,
+		enabled: true,
 	}
 }
 

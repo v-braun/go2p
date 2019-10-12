@@ -95,7 +95,7 @@ func (o *operator) listen(ctx context.Context) {
 			} else if tmpErr, ok := err.(net.Error); ok && tmpErr.Temporary() {
 				o.emitter.Emit("error", errors.Wrap(err, "temp error during listening"), true)
 			} else if err != nil && ctx.Err() == nil {
-				o.emitter.Emit("error", errors.Wrap(err, "fatal error, wil stop listening"))
+				o.emitter.Emit("error", errors.Wrap(err, "fatal error, will stop listening"))
 				break
 			} else if ctx.Err() != nil {
 				break

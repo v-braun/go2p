@@ -48,24 +48,28 @@ func (p *Pipe) process(msg *Message) error {
 	nextItems := p.executingActions.nextItems(p.op)
 
 	for _, m := range nextItems {
+
 		p.log.Debug(logging.Fields{
 			"name":    m.name,
 			"pos":     m.pos,
 			"msg-len": len(msg.PayloadGet()),
 			"op":      p.op.String(),
+			"skip":    !m.enabled,
 		}, "execute middleware")
 
-		res, err := m.execute(p.peer, p, msg)
-		if err != nil {
-			p.log.Error(logging.Fields{
-				"name":    m.name,
-				"pos":     m.pos,
-				"msg-len": len(msg.PayloadGet()),
-				"err":     err,
-			}, "middleware error")
-			return err
-		} else if res == Stop {
-			return ErrPipeStopProcessing
+		if m.enabled {
+			res, err := m.execute(p.peer, p, msg)
+			if err != nil {
+				p.log.Error(logging.Fields{
+					"name":    m.name,
+					"pos":     m.pos,
+					"msg-len": len(msg.PayloadGet()),
+					"err":     err,
+				}, "middleware error")
+				return err
+			} else if res == Stop {
+				return ErrPipeStopProcessing
+			}
 		}
 
 		if p.op == Send {

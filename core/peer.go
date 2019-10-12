@@ -1,6 +1,9 @@
 package core
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/v-braun/awaiter"
 	"github.com/v-braun/go2p/core/utils"
 
@@ -16,6 +19,10 @@ type Peer struct {
 	emitter    *utils.EventEmitter
 	metadata   maps.Map
 	awaiter    awaiter.Awaiter
+
+	stopping        uint32
+	notifyStopOnce  *sync.Once
+	notifyErrorOnce *sync.Once
 }
 
 func newPeer(conn Conn, middleware middlewares) *Peer {
@@ -26,17 +33,19 @@ func newPeer(conn Conn, middleware middlewares) *Peer {
 	p.middleware = middleware
 	p.metadata = hashmap.New()
 	p.emitter = utils.NewEventEmitter()
+	p.stopping = 0
 
 	return p
 }
 
 func (p *Peer) start() <-chan struct{} {
 	done := make(chan struct{})
-	p.conn.emitter.On("disconnect", func() {
-		go p.emitter.Emit("disconnect", p)
+	p.conn.emitter.Once("disconnect", func() {
+		p.stop()
 	})
-	p.conn.emitter.On("error", func(err error) {
+	p.conn.emitter.Once("error", func(err error) {
 		go p.emitter.Emit("error", p, err)
+		p.stop()
 	})
 
 	p.conn.start()
@@ -77,7 +86,7 @@ func (p *Peer) processPipe(m *Message, op PipeOperation) {
 
 	if err != nil {
 		p.conn.handleError(err, "processPipe")
-		p.stopInternal()
+		p.stop()
 		return
 	}
 
@@ -87,7 +96,7 @@ func (p *Peer) processPipe(m *Message, op PipeOperation) {
 		err := p.conn.sendMsg(m)
 		if err != nil {
 			p.conn.handleError(err, "processPipe")
-			p.stopInternal()
+			p.stop()
 			return
 		}
 	}
@@ -98,12 +107,20 @@ func (p *Peer) stopInternal() {
 	p.conn.Close()
 	p.conn.awaiter.Cancel()
 	p.awaiter.Cancel()
+
+	p.conn.awaiter.AwaitSync()
+	p.awaiter.AwaitSync()
+	go p.emitter.Emit("disconnect", p)
 }
 
 func (p *Peer) stop() {
+
+	if atomic.LoadUint32(&p.stopping) == 1 {
+		return
+	}
+
+	atomic.StoreUint32(&p.stopping, 1)
 	p.stopInternal()
-	p.conn.awaiter.AwaitSync()
-	p.awaiter.AwaitSync()
 }
 
 // RemoteAddress returns the remote address of the current peer

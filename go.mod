@@ -16,8 +16,9 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
-	github.com/mattn/go-isatty v0.0.9 // indirect
+	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/olebedev/emitter v0.0.0-20190110104742-e8d1457e6aee
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
@@ -30,9 +31,11 @@ require (
 	github.com/v-braun/go-must v0.0.0-20190710195319-bad755225388
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc // indirect
-	golang.org/x/net v0.0.0-20191007182048-72f939374954 // indirect
+	golang.org/x/net v0.0.0-20191009170851-d66e71096ffb // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20191008105621-543471e840be // indirect
+	golang.org/x/sys v0.0.0-20191009170203-06d7bd2c5f4f // indirect
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/tools v0.0.0-20191007185444-6536af71d98a // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
