@@ -8,7 +8,7 @@ import (
 // Network is the main entry point to the p2p network
 type Network struct {
 	middlewares middlewares
-	operators   []Operator
+	extensions  []Extension
 	emitter     *utils.EventEmitter
 	log         *logging.Logger
 	peers       *peers
@@ -19,7 +19,7 @@ type Network struct {
 func NewNetwork() *Network {
 	result := &Network{
 		middlewares: make([]*Middleware, 0),
-		operators:   make([]Operator, 0),
+		extensions:  make([]Extension, 0),
 		emitter:     utils.NewEventEmitter(),
 		log:         logging.NewLogger("network"),
 		peers:       newPeers(),
@@ -43,10 +43,10 @@ func (nc *Network) PrependMiddleware(middleware *Middleware) *Network {
 	return nc
 }
 
-func (nc *Network) UseOperator(operator Operator) *Network {
+func (nc *Network) UseExtension(extension Extension) *Network {
 	nc.ensureStarted(false)
 
-	nc.operators = append(nc.operators, operator)
+	nc.extensions = append(nc.extensions, extension)
 	return nc
 }
 
@@ -94,7 +94,12 @@ func (nc *Network) SendBroadcast(msg *Message) {
 func (nc *Network) ConnectTo(network string, addr string) error {
 	nc.ensureStarted(true)
 
-	for _, op := range nc.operators {
+	for _, ex := range nc.extensions {
+		op, ok := ex.(Dialer)
+		if !ok {
+			continue
+		}
+
 		nc.log.Debug(logging.Fields{
 			"network": network,
 			"addr":    addr,
@@ -104,6 +109,7 @@ func (nc *Network) ConnectTo(network string, addr string) error {
 		if err != nil && err != ErrInvalidNetwork {
 			return err
 		}
+
 	}
 
 	return nil
@@ -133,44 +139,12 @@ func (nc *Network) Start() error {
 
 	nc.log.Debug(logging.Fields{}, "start network")
 
-	for _, op := range nc.operators {
-		op.OnPeer(func(a Conn) {
-			p := newPeer(a, nc.middlewares)
-			nc.peers.add(p)
+	for _, ex := range nc.extensions {
+		if l, ok := ex.(Listener); ok {
+			l.OnPeer(nc.handleNewPeer)
+		}
 
-			p.emitter.On("message", func(p *Peer, m *Message) {
-				nc.log.Debug(logging.Fields{
-					"remote": p.RemoteAddress(),
-					"local":  p.LocalAddress(),
-				}, "peer disconnect")
-
-				nc.emitter.Emit("peer-message", p, m)
-			})
-			p.emitter.Once("disconnect", func(p *Peer) {
-				nc.log.Info(logging.Fields{
-					"remote": p.RemoteAddress(),
-					"local":  p.LocalAddress(),
-				}, "peer disconnect")
-
-				nc.peers.rm(p)
-				nc.emitter.Emit("peer-disconnect", p)
-			})
-			p.emitter.Once("error", func(p *Peer, err error) {
-				nc.log.Error(logging.Fields{
-					"remote": p.RemoteAddress(),
-					"local":  p.LocalAddress(),
-					"err":    err.Error(),
-				}, "peer error")
-
-				nc.emitter.Emit("peer-error", p, err)
-			})
-
-			<-p.start()
-
-			nc.emitter.Emit("peer-connect", p)
-		})
-
-		err := op.Start()
+		err := ex.Install(nc)
 		if err != nil {
 			return err
 		}
@@ -223,8 +197,8 @@ func (nc *Network) OnPeerDisconnect(handler func(p *Peer)) {
 func (nc *Network) Stop() {
 	nc.ensureStarted(true)
 
-	for _, op := range nc.operators {
-		op.Stop()
+	for _, ex := range nc.extensions {
+		ex.Uninstall()
 	}
 
 	peers := nc.peers.allPeers()
@@ -234,6 +208,42 @@ func (nc *Network) Stop() {
 	}
 
 	nc.started = false
+}
+
+func (nc *Network) handleNewPeer(a Conn) {
+	p := newPeer(a, nc.middlewares)
+	nc.peers.add(p)
+
+	p.emitter.On("message", func(p *Peer, m *Message) {
+		nc.log.Debug(logging.Fields{
+			"remote": p.RemoteAddress(),
+			"local":  p.LocalAddress(),
+		}, "peer disconnect")
+
+		nc.emitter.Emit("peer-message", p, m)
+	})
+	p.emitter.Once("disconnect", func(p *Peer) {
+		nc.log.Info(logging.Fields{
+			"remote": p.RemoteAddress(),
+			"local":  p.LocalAddress(),
+		}, "peer disconnect")
+
+		nc.peers.rm(p)
+		nc.emitter.Emit("peer-disconnect", p)
+	})
+	p.emitter.Once("error", func(p *Peer, err error) {
+		nc.log.Error(logging.Fields{
+			"remote": p.RemoteAddress(),
+			"local":  p.LocalAddress(),
+			"err":    err.Error(),
+		}, "peer error")
+
+		nc.emitter.Emit("peer-error", p, err)
+	})
+
+	<-p.start()
+
+	nc.emitter.Emit("peer-connect", p)
 }
 
 func (nc *Network) ensureStarted(state bool) {

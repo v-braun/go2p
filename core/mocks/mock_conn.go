@@ -5,10 +5,9 @@
 package mocks
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	core "github.com/v-braun/go2p/core"
+	reflect "reflect"
 )
 
 // MockConn is a mock of Conn interface

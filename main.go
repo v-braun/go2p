@@ -10,10 +10,9 @@ func NewBareNetwork() *core.Network {
 	return core.NewNetwork()
 }
 
-
 func NewTcpNetwork(localAddr string) *core.Network {
 	net := core.NewNetwork().
-		UseOperator(tcp.NewOperator("tcp", localAddr)).
+		UseExtension(tcp.NewTCPExtension("tcp", localAddr)).
 		AppendMiddleware(middleware.Headers()).
 		AppendMiddleware(middleware.Crypt()).
 		AppendMiddleware(middleware.Log())

@@ -204,14 +204,14 @@ func TestInvalidAddress(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestOperatorStartError(t *testing.T) {
+func TestExtensionStartError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	sut1 := internal.CreateMockSUT(t, ctrl)
 	sut1.ExpectedErr = errors.New("expected err")
 
-	sut1.Operator.EXPECT().Start().Return(sut1.ExpectedErr)
+	sut1.Operator.EXPECT().Install(gomock.Any()).Return(sut1.ExpectedErr)
 	sut1.ActualErr = sut1.Start()
 
 	assert.Equal(t, sut1.ExpectedErr, sut1.ActualErr)
@@ -224,7 +224,7 @@ func TestConnReadErr(t *testing.T) {
 	sut1 := internal.CreateMockSUT(t, ctrl)
 	sut1.ExpectedErr = errors.New("expected err")
 
-	sut1.Operator.EXPECT().Start().Return(nil)
+	sut1.Operator.EXPECT().Install(gomock.Any()).Return(nil)
 
 	sut1.Conn.EXPECT().ReadMessage().DoAndReturn(func() (*core.Message, error) {
 		return nil, sut1.ExpectedErr
@@ -251,7 +251,7 @@ func TestConnReadDisconnect(t *testing.T) {
 
 	sut1 := internal.CreateMockSUT(t, ctrl)
 
-	sut1.Operator.EXPECT().Start().Return(nil)
+	sut1.Operator.EXPECT().Install(gomock.Any()).Return(nil)
 
 	notifyReadDisconn := sut1.CreateDisconnectOnReadMessage()
 	sut1.Conn.EXPECT().Close()
@@ -272,8 +272,8 @@ func TestOperatorConnectError(t *testing.T) {
 
 	sut1 := internal.CreateMockSUT(t, ctrl)
 	sut1.Operator.EXPECT().Dial(gomock.Any(), gomock.Any()).Return(sut1.ExpectedErr)
-	sut1.Operator.EXPECT().Start().Return(nil)
-	sut1.Operator.EXPECT().Stop()
+	sut1.Operator.EXPECT().Install(gomock.Any()).Return(nil)
+	sut1.Operator.EXPECT().Uninstall()
 
 	sut1.Start()
 
@@ -289,8 +289,8 @@ func TestEnsureStarted(t *testing.T) {
 	defer ctrl.Finish()
 
 	sut1 := internal.CreateMockSUT(t, ctrl)
-	sut1.Operator.EXPECT().Start().Return(nil)
-	sut1.Operator.EXPECT().Stop()
+	sut1.Operator.EXPECT().Install(gomock.Any()).Return(nil)
+	sut1.Operator.EXPECT().Uninstall()
 
 	assert.Panics(t, func() {
 		sut1.ConnectTo("any", "any")
@@ -314,7 +314,7 @@ func TestConnWriteErr(t *testing.T) {
 	sut1 := internal.CreateMockSUT(t, ctrl)
 	sut1.ExpectedErr = errors.New("expected err")
 
-	sut1.Operator.EXPECT().Start().Return(nil)
+	sut1.Operator.EXPECT().Install(gomock.Any()).Return(nil)
 
 	notifyReadDisconn := sut1.CreateDisconnectOnReadMessage()
 

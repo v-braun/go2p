@@ -98,7 +98,7 @@ func CreateMockSUT(t *testing.T, controller *gomock.Controller) *MockSUT {
 	conn := mocks.NewMockConn(controller)
 	op := mocks.NewMockOperator(controller)
 	net := go2p.NewBareNetwork()
-	net.UseOperator(op)
+	net.UseExtension(op)
 
 	result := &MockSUT{Network: net, Conn: conn, Operator: op, Wg: sync.WaitGroup{}}
 	result.ExpectedErr = errors.New("expected")

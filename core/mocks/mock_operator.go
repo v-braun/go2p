@@ -5,10 +5,9 @@
 package mocks
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	core "github.com/v-braun/go2p/core"
+	reflect "reflect"
 )
 
 // MockOperator is a mock of Operator interface
@@ -48,16 +47,18 @@ func (mr *MockOperatorMockRecorder) Dial(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dial", reflect.TypeOf((*MockOperator)(nil).Dial), arg0, arg1)
 }
 
-// OnError mocks base method
-func (m *MockOperator) OnError(arg0 func(error)) {
+// Install mocks base method
+func (m *MockOperator) Install(arg0 *core.Network) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "OnError", arg0)
+	ret := m.ctrl.Call(m, "Install", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// OnError indicates an expected call of OnError
-func (mr *MockOperatorMockRecorder) OnError(arg0 interface{}) *gomock.Call {
+// Install indicates an expected call of Install
+func (mr *MockOperatorMockRecorder) Install(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnError", reflect.TypeOf((*MockOperator)(nil).OnError), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Install", reflect.TypeOf((*MockOperator)(nil).Install), arg0)
 }
 
 // OnPeer mocks base method
@@ -72,28 +73,14 @@ func (mr *MockOperatorMockRecorder) OnPeer(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnPeer", reflect.TypeOf((*MockOperator)(nil).OnPeer), arg0)
 }
 
-// Start mocks base method
-func (m *MockOperator) Start() error {
+// Uninstall mocks base method
+func (m *MockOperator) Uninstall() {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start")
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "Uninstall")
 }
 
-// Start indicates an expected call of Start
-func (mr *MockOperatorMockRecorder) Start() *gomock.Call {
+// Uninstall indicates an expected call of Uninstall
+func (mr *MockOperatorMockRecorder) Uninstall() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockOperator)(nil).Start))
-}
-
-// Stop mocks base method
-func (m *MockOperator) Stop() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Stop")
-}
-
-// Stop indicates an expected call of Stop
-func (mr *MockOperatorMockRecorder) Stop() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockOperator)(nil).Stop))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Uninstall", reflect.TypeOf((*MockOperator)(nil).Uninstall))
 }
