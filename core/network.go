@@ -1,6 +1,8 @@
 package core
 
 import (
+	"time"
+
 	"github.com/v-braun/go2p/core/logging"
 	"github.com/v-braun/go2p/core/utils"
 )
@@ -244,6 +246,22 @@ func (nc *Network) handleNewPeer(a Conn) {
 	<-p.start()
 
 	nc.emitter.Emit("peer-connect", p)
+}
+
+func (nc *Network) Started() chan struct{} {
+	result := make(chan struct{}, 0)
+
+	go func() {
+		for {
+			if nc.started {
+				close(result)
+			} else {
+				time.Sleep(time.Millisecond * 100)
+			}
+		}
+	}()
+
+	return result
 }
 
 func (nc *Network) ensureStarted(state bool) {
