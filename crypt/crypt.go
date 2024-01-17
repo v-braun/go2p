@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
@@ -90,7 +89,7 @@ func (pk *PrivKey) Decrypt(pub *PubKey, encryptedData []byte) ([]byte, error) {
 	}
 
 	encryptedPass := encryptedData[:encryptedPassLen]
-	decryptedPass, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, pk.priv, encryptedPass, nil)
+	decryptedPass, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, pk.priv, encryptedPass, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed decrypt pass")
 	}
@@ -191,7 +190,7 @@ func (pk *PubKey) Encrypt(priv *PrivKey, decrypted []byte) ([]byte, error) {
 	decryptedPass := hash // use the hash of the msg as its pass
 	encryptedData := enc(decryptedPass, nonce, decrypted)
 
-	encryptedPass, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pk.pub, decryptedPass, nil)
+	encryptedPass, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, pk.pub, decryptedPass, nil)
 	if err != nil {
 		return nil, err
 	}
